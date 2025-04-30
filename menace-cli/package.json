@@ -1,0 +1,16 @@
+{
+  "name": "menace-cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": {
+    "menace": "./bin/menace.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node scripts/build-all.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
