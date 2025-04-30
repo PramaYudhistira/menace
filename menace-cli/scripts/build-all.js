@@ -16,6 +16,11 @@ const binDir = path.resolve(__dirname, "../bin");
 
 // build all targets
 for (const {os: GOOS, arch: GOARCH, output} of buildTargets) {
+    /*
+    output: name of output file
+    GOARCH: architecture
+    GOOS: os
+    */
     const outPath = path.join(binDir, output);
     console.log(`Building for ${GOOS}/${GOARCH} → ${output}`);
 
