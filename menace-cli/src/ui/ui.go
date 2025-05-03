@@ -153,7 +153,7 @@ func (m Model) View() string {
 		// Input prompt with its own rectangle
 	inputPrompt := InputStyle.
 		Border(lipgloss.RoundedBorder()).
-		Width(termWidth - 22). // Same width as chat box
+		Width(termWidth - 24). // Same width as chat box
 		Render("> " + m.Input)
 
 	// Combine chat and input
