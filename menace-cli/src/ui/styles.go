@@ -3,6 +3,7 @@ package ui
 import "github.com/charmbracelet/lipgloss"
 
 // Styles for Menace CLI UI
+// Includes "boxes" for chat and input area
 var (
 	SidebarStyle = lipgloss.NewStyle().
 			Width(20).
