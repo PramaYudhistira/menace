@@ -1,11 +1,14 @@
 package ui
 
 import (
-	"menace-go/model"
-	"os"
+   "menace-go/model"
+   "os"
+   "strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+   tea "github.com/charmbracelet/bubbletea"
+   "github.com/charmbracelet/lipgloss"
+   "github.com/charmbracelet/x/cellbuf"
+   "github.com/mattn/go-runewidth"
 )
 
 type Model struct {
@@ -34,34 +37,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
+		case tea.KeyCtrlC.String():
 			return m, tea.Quit
-		case "up":
-			// Scroll up the chat history
-			// Calculate how many messages fit (adjusted for chat frame and input height)
-			visible := m.Height - 7
-			if visible < 0 {
-				visible = 0
-			}
-			maxOff := len(m.Messages) - visible
-			if maxOff < 0 {
-				maxOff = 0
-			}
-			if m.Scroll < maxOff {
-				m.Scroll++
-			}
+
+		case tea.KeyShiftDown.String():
+			// Handle Ctrl+C
+			m.Input += "\n"
 			return m, nil
+
+       case "up":
+           // Scroll up the chat history by lines
+           // Calculate how many lines fit (adjusted for chat frame and input height)
+           visible := m.Height - 7
+           if visible < 0 {
+               visible = 0
+           }
+           // Calculate wrap width for content lines
+           chatWidth := m.Width - 24
+           wrapWidth := chatWidth - 2 // account for ChatStyle padding
+           if wrapWidth < 1 {
+               wrapWidth = 1
+           }
+           // Count total lines across all messages after wrapping
+           totalLines := 0
+           for _, msg := range m.Messages {
+               for _, part := range strings.Split(msg.Content, "\n") {
+                   wrapped := cellbuf.Wrap(part, wrapWidth, "")
+                   totalLines += strings.Count(wrapped, "\n") + 1
+               }
+           }
+           maxOff := totalLines - visible
+           if maxOff < 0 {
+               maxOff = 0
+           }
+           if m.Scroll < maxOff {
+               m.Scroll++
+           }
+           return m, nil
 		case "down":
 			// Scroll down
 			if m.Scroll > 0 {
 				m.Scroll--
 			}
 			return m, nil
-		case "enter":
+		case tea.KeyEnter.String():
 			// Append user message
 			//TODO: Call LLM, send request via m.Input
 			m.Messages = append(m.Messages, model.Message{Sender: "user", Content: m.Input})
-			response := "Echo (LLM output here...): " + m.Input
+			response := "Echo (LLM output here...) haha: " + m.Input
 			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: response})
 			m.Input = ""
 			// reset scroll to bottom on new message
@@ -101,6 +124,7 @@ func (m Model) View() string {
 	}
 	// Sidebar header and controls
 	sidebarContent := HeaderStyle.Render("👹 Menace CLI") +
+		"\n" + "Working Directory:" +
 		"\n" + dir +
 		"\n`Ctrl + C` to exit" +
 		"\n`↑`/`↓` to scroll"
@@ -111,40 +135,65 @@ func (m Model) View() string {
 		Height(termHeight - 2). // Adjust for top/bottom margins
 		Render(sidebar)
 
-	// Render messages with distinct styles, applying scroll offset
-	// Determine how many messages fit in chat box
-	visibleCount := termHeight - 7
-	if visibleCount < 0 {
-		visibleCount = 0
+   // Render messages line by line with wrapping, applying scroll offset
+   var renderedLines []string
+   // chat content width: total width minus sidebar and margins
+   chatWidth := termWidth - 24
+   // account for ChatStyle padding (1 left, 1 right)
+   wrapWidth := chatWidth - 2
+   if wrapWidth < 1 {
+       wrapWidth = 1
+   }
+   for _, msg := range m.Messages {
+       var styleFunc func(...string) string
+       var prefix string
+       switch msg.Sender {
+       case "user":
+           styleFunc = UserStyle.Render
+           prefix = "> "
+       case "llm":
+           styleFunc = LLMStyle.Render
+           prefix = "💭 "
+       default:
+           styleFunc = func(parts ...string) string { return strings.Join(parts, "") }
+           prefix = ""
+       }
+       // measure prefix width
+       prefixWidth := runewidth.StringWidth(prefix)
+       for _, part := range strings.Split(msg.Content, "\n") {
+           // wrap part at content width minus prefix
+           lineWidth := wrapWidth - prefixWidth
+           if lineWidth < 1 {
+               lineWidth = 1
+           }
+           wrapped := cellbuf.Wrap(part, lineWidth, "")
+           for _, line := range strings.Split(wrapped, "\n") {
+               renderedLines = append(renderedLines, styleFunc(prefix+line))
+           }
+       }
+   }
+	// Determine how many lines fit in chat box
+	visibleLines := termHeight - 7
+	if visibleLines < 0 {
+		visibleLines = 0
 	}
-	// Select slice of messages based on scroll (0 = bottom)
-	total := len(m.Messages)
-	var slice []model.Message
-	if total > visibleCount {
-		start := total - visibleCount - m.Scroll
+	// Slice lines based on scroll (0 = bottom)
+	totalLines := len(renderedLines)
+	var linesToRender []string
+	if totalLines > visibleLines {
+		start := totalLines - visibleLines - m.Scroll
 		if start < 0 {
 			start = 0
 		}
-		end := total - m.Scroll
-		if end > total {
-			end = total
+		end := totalLines - m.Scroll
+		if end > totalLines {
+			end = totalLines
 		}
-		slice = m.Messages[start:end]
+		linesToRender = renderedLines[start:end]
 	} else {
-		slice = m.Messages
+		linesToRender = renderedLines
 	}
-	var rendered []string
-	for _, msg := range slice {
-		switch msg.Sender {
-		case "user":
-			rendered = append(rendered, UserStyle.Render("> "+msg.Content))
-		case "llm":
-			rendered = append(rendered, LLMStyle.Render("💭 "+msg.Content))
-		default:
-			rendered = append(rendered, msg.Content)
-		}
-	}
-	chatBody := lipgloss.JoinVertical(lipgloss.Top, rendered...)
+	chatBody := lipgloss.JoinVertical(lipgloss.Top, linesToRender...)
 	chatBox := ChatStyle.
 		Width(termWidth - 24).  // Adjust width to fit next to the sidebar
 		Height(termHeight - 5). // Leave space for input box

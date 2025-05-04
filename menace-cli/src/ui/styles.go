@@ -9,7 +9,7 @@ var (
 			Width(20).
 			PaddingRight(1).
 			Foreground(lipgloss.Color("15")).
-			Background(lipgloss.Color("8"))
+			Background(lipgloss.Color("5"))
 
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
