@@ -12,9 +12,11 @@ type Model struct {
 	Height int
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
+	// Cursor position in input (column, row)
+	CursorX int
+	CursorY int
 }
 
-// Init is called when the program starts.
 func (m Model) Init() tea.Cmd {
 	_ = model.Model{}
 	return nil
@@ -22,7 +24,9 @@ func (m Model) Init() tea.Cmd {
 
 // main entry point for the UI
 func NewModel() Model {
-	return Model{
-		Model: model.NewModel(),
-	}
+   return Model{
+       Model:   model.NewModel(),
+       CursorX: 0,
+       CursorY: 0,
+   }
 }

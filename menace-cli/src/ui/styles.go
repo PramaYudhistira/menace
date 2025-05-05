@@ -8,8 +8,7 @@ var (
 	SidebarStyle = lipgloss.NewStyle().
 			Width(20).
 			PaddingRight(1).
-			Foreground(lipgloss.Color("15")).
-			Background(lipgloss.Color("5"))
+			Foreground(lipgloss.Color("15"))
 
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -32,4 +31,6 @@ var (
 	LLMStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("4")).
 			Italic(true)
+	// Style for the block cursor in the input
+	CursorStyle = lipgloss.NewStyle().Reverse(true)
 )
