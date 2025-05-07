@@ -174,6 +174,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		case tea.KeyEnter.String():
+			if m.Input == "" {
+				return m, nil
+			}
 			// Append user message
 			m.Messages = append(m.Messages, model.Message{Sender: "user", Content: m.Input})
 			response := "Echo (LLM output here...) haha: " + m.Input

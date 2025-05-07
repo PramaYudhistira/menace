@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"menace-go/llmServer"
 	"os"
 	"strings"
 
@@ -25,9 +26,12 @@ func (m Model) View() string {
 		dir = "unknown directory"
 	}
 	// Sidebar header and controls
+	mf := llmServer.ModelFactory{}
 	sidebarContent := HeaderStyle.Render("👹 Menace CLI") +
 		"\n" + "Working Directory:" +
 		"\n" + dir +
+		"\n" + "Running on:" +
+		"\n" + mf.DetectShell() +
 		"\n`Ctrl + C` to exit" +
 		"\n`↑`/`↓` to scroll"
 	sidebar := SidebarStyle.Render(sidebarContent)
@@ -108,71 +112,74 @@ func (m Model) View() string {
 		Height(termHeight - 5). // Leave space for input box
 		Render(chatBody)
 
-   // Render input area with block cursor and proper wrapping/indent
-   prefix := "> "
-   boxW := termWidth - 24
-   innerW := boxW - 2 // account for border
-   prefixW := runewidth.StringWidth(prefix)
-   wrapW := innerW - prefixW
-   if wrapW < 1 {
-       wrapW = 1
-   }
-   // Build visual rows from input
-   type visRow struct { lineIdx, offset int; seg string }
-   var rows []visRow
-   parts := strings.Split(m.Input, "\n")
-   for li, part := range parts {
-       runes := []rune(part)
-       if len(runes) == 0 {
-           rows = append(rows, visRow{li, 0, ""})
-           continue
-       }
-       for off := 0; off < len(runes); {
-           w, start := 0, off
-           for ; off < len(runes); off++ {
-               rw := runewidth.StringWidth(string(runes[off]))
-               if w+rw > wrapW {
-                   break
-               }
-               w += rw
-           }
-           if off == start {
-               off = start + 1
-           }
-           seg := string(runes[start:off])
-           rows = append(rows, visRow{li, start, seg})
-       }
-   }
-   // Render rows with indent and cursor highlight
-   indent := strings.Repeat(" ", prefixW)
-   var rendered []string
-   for vi, r := range rows {
-       curPfx := indent
-       if vi == 0 {
-           curPfx = prefix
-       }
-       // Cursor in this row?
-       if r.lineIdx == m.CursorY && m.CursorX >= r.offset && m.CursorX <= r.offset+len([]rune(r.seg)) {
-           rel := m.CursorX - r.offset
-           runes := []rune(r.seg)
-           if rel < len(runes) {
-               before := string(runes[:rel])
-               ch := string(runes[rel])
-               after := string(runes[rel+1:])
-               rendered = append(rendered, curPfx+before+CursorStyle.Render(ch)+after)
-           } else {
-               pad := strings.Repeat(" ", rel-len(runes))
-               rendered = append(rendered, curPfx+r.seg+pad+CursorStyle.Render(" "))
-           }
-       } else {
-           rendered = append(rendered, curPfx+r.seg)
-       }
-   }
-   inputContent := strings.Join(rendered, "\n")
-   inputPrompt := InputStyle.
-       Border(lipgloss.RoundedBorder()).
-       Width(boxW).
-       Render(inputContent)
+	// Render input area with block cursor and proper wrapping/indent
+	prefix := "> "
+	boxW := termWidth - 24
+	innerW := boxW - 2 // account for border
+	prefixW := runewidth.StringWidth(prefix)
+	wrapW := innerW - prefixW
+	if wrapW < 1 {
+		wrapW = 1
+	}
+	// Build visual rows from input
+	type visRow struct {
+		lineIdx, offset int
+		seg             string
+	}
+	var rows []visRow
+	parts := strings.Split(m.Input, "\n")
+	for li, part := range parts {
+		runes := []rune(part)
+		if len(runes) == 0 {
+			rows = append(rows, visRow{li, 0, ""})
+			continue
+		}
+		for off := 0; off < len(runes); {
+			w, start := 0, off
+			for ; off < len(runes); off++ {
+				rw := runewidth.StringWidth(string(runes[off]))
+				if w+rw > wrapW {
+					break
+				}
+				w += rw
+			}
+			if off == start {
+				off = start + 1
+			}
+			seg := string(runes[start:off])
+			rows = append(rows, visRow{li, start, seg})
+		}
+	}
+	// Render rows with indent and cursor highlight
+	indent := strings.Repeat(" ", prefixW)
+	var rendered []string
+	for vi, r := range rows {
+		curPfx := indent
+		if vi == 0 {
+			curPfx = prefix
+		}
+		// Cursor in this row?
+		if r.lineIdx == m.CursorY && m.CursorX >= r.offset && m.CursorX <= r.offset+len([]rune(r.seg)) {
+			rel := m.CursorX - r.offset
+			runes := []rune(r.seg)
+			if rel < len(runes) {
+				before := string(runes[:rel])
+				ch := string(runes[rel])
+				after := string(runes[rel+1:])
+				rendered = append(rendered, curPfx+before+CursorStyle.Render(ch)+after)
+			} else {
+				pad := strings.Repeat(" ", rel-len(runes))
+				rendered = append(rendered, curPfx+r.seg+pad+CursorStyle.Render(" "))
+			}
+		} else {
+			rendered = append(rendered, curPfx+r.seg)
+		}
+	}
+	inputContent := strings.Join(rendered, "\n")
+	inputPrompt := InputStyle.
+		Border(lipgloss.RoundedBorder()).
+		Width(boxW).
+		Render(inputContent)
 
 	// Combine chat and input
 	mainArea := lipgloss.JoinVertical(lipgloss.Top, chatBox, inputPrompt)

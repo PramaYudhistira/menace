@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-// console.log("running... hahaha");
-
 const { spawn } = require("child_process");
 const path = require("path");
 

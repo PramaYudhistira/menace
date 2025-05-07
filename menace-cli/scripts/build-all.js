@@ -11,8 +11,7 @@ const buildTargets = [
   { os: "windows", arch: "amd64", output: "menace-go-win.exe" },
 ];
 
-const goSrc     = path.resolve(__dirname, "../src/main.go");
-const goModDir  = path.resolve(__dirname, "../src");      // NEW
+const goModDir  = path.resolve(__dirname, "../src");
 const binDir    = path.resolve(__dirname, "../bin");
 
 // build all targets
@@ -26,7 +25,7 @@ for (const {os: GOOS, arch: GOARCH, output} of buildTargets) {
           `go build -o "${outPath}" "${goModDir}" .`,
           {
             stdio:  "inherit",
-            cwd:    goModDir,                      // NEW: run in src/
+            cwd:    goModDir,
             env:    { ...process.env, GOOS, GOARCH }
           }
         );
