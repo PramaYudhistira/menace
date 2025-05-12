@@ -4,7 +4,7 @@
 
 ## Run instructions
 
-### Cross platform support (OpenAI take notes lmao)
+### Cross platform support 
 
 * `npm run build` - builds the go code for ALL PLATFORMS
 * `npm i -g .` - installs package globally
