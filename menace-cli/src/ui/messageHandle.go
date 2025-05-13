@@ -1,17 +1,69 @@
 package ui
 
 import (
+	"menace-go/llmServer"
 	"menace-go/model"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/mattn/go-runewidth"
 )
 
+// LLMResponseMsg represents a message from the LLM
+type LLMResponseMsg struct {
+	Content string
+}
+
+// LoadingMsg represents a loading animation frame
+type LoadingMsg struct {
+	Frame int
+}
+
+// getLLMResponse is a command that fetches a response from the LLM
+func getLLMResponse(input string) tea.Cmd {
+	return func() tea.Msg {
+		llm := llmServer.GetInstance()
+		response, err := llm.SendMessage(input)
+		if err != nil {
+			return LLMResponseMsg{Content: "Error: " + err.Error()}
+		}
+
+		if len(response.Choices) > 0 {
+			return LLMResponseMsg{Content: response.Choices[0].Message.Content}
+		}
+		return LLMResponseMsg{Content: "No response from LLM"}
+	}
+}
+
+// loadingAnimation returns a command that sends loading animation frames
+func loadingAnimation() tea.Cmd {
+	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
+		return LoadingMsg{Frame: int(t.Unix()) % 4}
+	})
+}
+
 // Update handles all incoming messages (keypresses, etc.).
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case LLMResponseMsg:
+		// Remove loading message and add LLM response
+		if len(m.Messages) > 0 && strings.HasPrefix(m.Messages[len(m.Messages)-1].Content, "Thinking") {
+			m.Messages = m.Messages[:len(m.Messages)-1]
+		}
+		m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: msg.Content})
+		return m, nil
+
+	case LoadingMsg:
+		// Update loading animation
+		if len(m.Messages) > 0 && strings.HasPrefix(m.Messages[len(m.Messages)-1].Content, "Thinking") {
+			dots := strings.Repeat(".", msg.Frame+1)
+			m.Messages[len(m.Messages)-1].Content = "Thinking" + dots
+			return m, loadingAnimation()
+		}
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		// Update terminal size and reset scroll to bottom
 		m.Width = msg.Width
@@ -179,15 +231,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// Append user message
 			m.Messages = append(m.Messages, model.Message{Sender: "user", Content: m.Input})
-			response := "Echo (LLM output here...) haha: " + m.Input
-			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: response})
+			// Add loading message
+			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: "Thinking"})
+			// Get LLM response asynchronously
+			cmd := getLLMResponse(m.Input)
+			// Start loading animation
+			loadingCmd := loadingAnimation()
 			// Reset input and cursor
 			m.Input = ""
 			m.CursorX = 0
 			m.CursorY = 0
 			// Reset scroll to bottom
 			m.Scroll = 0
-			return m, nil
+			return m, tea.Batch(cmd, loadingCmd)
 
 		case tea.KeyBackspace.String():
 			// Delete character before cursor or merge lines

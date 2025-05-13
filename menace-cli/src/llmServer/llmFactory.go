@@ -12,6 +12,7 @@ type ModelFactory struct {
 	Model string
 }
 
+// TODO: Refactor?
 func (mf ModelFactory) DetectShell() string {
 	goos := runtime.GOOS
 	var shell string
