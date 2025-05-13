@@ -40,7 +40,7 @@ func getLLMResponse(input string) tea.Cmd {
 // loadingAnimation returns a command that sends loading animation frames
 func loadingAnimation() tea.Cmd {
 	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
-		return LoadingMsg{Frame: int(t.Unix()) % 4}
+		return LoadingMsg{Frame: int((t.UnixNano() / int64(time.Millisecond*300)) % 4)}
 	})
 }
 
