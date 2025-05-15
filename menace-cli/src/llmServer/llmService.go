@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -15,13 +16,32 @@ const (
 	GPT35Turbo   = "gpt-3.5-turbo"      // Fallback model
 )
 
+var (
+	shell         = ModelFactory{}.DetectShell()
+	shellType     = strings.Split(shell, "/")[1] // Get just the shell type (bash, powershell, etc.)
+	system_prompt = fmt.Sprintf(`You are operating as and within the Menace CLI built by Prama Yudhistira. You must be safe, precise and helpful.
+	Menace-CLI is a Go-based CLI tool that uses large language models to provide intelligent terminal assistance.
+	You have access to the local file system and can execute commands in %s.
+
+	When you need to execute a command, format it like this:
+	`+"```"+shellType+"\n"+`your_command_here
+	`+"```\n"+`
+
+	For example, to list files:
+	`+"```"+shellType+"\n"+`ls
+	`+"```\n"+`
+
+	You should respond as if you are part of this real application, not a fictional tool.
+	Always explain what you're doing before executing commands, and explain the results after.`, shell)
+)
+
 // LLMService represents the singleton LLM service
 type LLMService struct {
 	apiKey     string
 	baseURL    string
 	httpClient *http.Client
 	model      string
-	messages   []Message //this stores context for now...
+	messages   []Message //this stores context for now, we will eventually run out of stack space
 	mu         sync.Mutex
 }
 
@@ -31,13 +51,22 @@ var (
 )
 
 // GetInstance returns the singleton instance of LLMService
+/*
+TODO: messages field will eventually become large and will cause stack overflow
+      make sure to implement directory specific context
+*/
 func GetInstance() *LLMService {
 	once.Do(func() {
 		instance = &LLMService{
 			httpClient: &http.Client{},
 			baseURL:    "https://api.openai.com/v1/chat/completions",
 			model:      GPT4MiniHigh, // Default to the higher quality GPT-4 model
-			messages:   make([]Message, 0),
+			messages: []Message{
+				{
+					Role:    "system",
+					Content: system_prompt,
+				},
+			},
 		}
 	})
 	return instance
@@ -75,7 +104,7 @@ type Message struct {
 	Content string `json:"content"`
 }
 
-// ChatRequest represents the request structure for chat completion
+// ChatRequest represents the request structure for the LLM, the entire context is stored in Messages field
 type ChatRequest struct {
 	Model    string    `json:"model"`
 	Messages []Message `json:"messages"`
@@ -103,10 +132,11 @@ func (s *LLMService) SendMessage(input string) (*ChatResponse, error) {
 
 	reqBody := ChatRequest{
 		Model:    s.model,
-		Messages: s.messages,
+		Messages: s.messages, //entire history sent
 	}
 	s.mu.Unlock()
 
+	//convert ChatRequest to json
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling request: %v", err)

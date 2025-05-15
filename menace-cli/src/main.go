@@ -19,8 +19,11 @@ func main() {
 		llm.Configure(apiKey)
 	}
 
+	// Initialize agent
+	agent := llmServer.NewAgent(llm)
+
 	p := tea.NewProgram(
-		ui.NewModel(),
+		ui.NewModel(agent),
 		tea.WithAltScreen()) // alternate screen
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running Menace CLI:", err)
