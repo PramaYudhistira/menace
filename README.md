@@ -4,8 +4,11 @@
 
 ## Run instructions
 
-### Cross platform support 
+* Currently planning  on adding this to the npm registry
 
-* `npm run build` - builds the go code for ALL PLATFORMS
+### For local download:
+
+* cd into the `menace-cli` directory
+* `npm run build` - to build into the `bin` directory
 * `npm i -g .` - installs package globally
-* `menace` - have fun
+* `menace` - run in any directory, and you can interact with the AI agent
