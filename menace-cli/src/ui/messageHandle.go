@@ -22,8 +22,14 @@ type LoadingMsg struct {
 }
 
 // getLLMResponse is a command that fetches a response from the LLM
-func getLLMResponse(input string) tea.Cmd {
+func getLLMResponse(input string, agent *llmServer.Agent) tea.Cmd {
 	return func() tea.Msg {
+		// Run the agent to handle the input
+		if err := agent.Run(input); err != nil {
+			return LLMResponseMsg{Content: "Error: " + err.Error()}
+		}
+
+		// Get the final response from the LLM
 		llm := llmServer.GetInstance()
 		response, err := llm.SendMessage(input)
 		if err != nil {
@@ -229,12 +235,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Input == "" {
 				return m, nil
 			}
+			// Check if the last message is "Thinking"
+			if len(m.Messages) > 0 && strings.HasPrefix(m.Messages[len(m.Messages)-1].Content, "Thinking") {
+				return m, nil // Don't allow new message while thinking
+			}
 			// Append user message
 			m.Messages = append(m.Messages, model.Message{Sender: "user", Content: m.Input})
 			// Add loading message
 			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: "Thinking"})
 			// Get LLM response asynchronously
-			cmd := getLLMResponse(m.Input)
+			cmd := getLLMResponse(m.Input, m.agent)
 			// Start loading animation
 			loadingCmd := loadingAnimation()
 			// Reset input and cursor

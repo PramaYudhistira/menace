@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"menace-go/llmServer"
 	"menace-go/model"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -8,6 +9,7 @@ import (
 
 type Model struct {
 	model.Model
+	agent  *llmServer.Agent
 	Width  int
 	Height int
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
@@ -18,15 +20,15 @@ type Model struct {
 }
 
 func (m Model) Init() tea.Cmd {
-	_ = model.Model{}
 	return nil
 }
 
 // main entry point for the UI
-func NewModel() Model {
-   return Model{
-       Model:   model.NewModel(),
-       CursorX: 0,
-       CursorY: 0,
-   }
+func NewModel(agent *llmServer.Agent) Model {
+	return Model{
+		Model:   model.NewModel(),
+		agent:   agent,
+		CursorX: 0,
+		CursorY: 0,
+	}
 }

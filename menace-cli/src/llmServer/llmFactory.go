@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// this isn't even used as a factory class you doughnut
 type ModelFactory struct {
 	Model string
 }
