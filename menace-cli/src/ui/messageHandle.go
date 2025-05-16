@@ -1,35 +1,20 @@
 package ui
 
 import (
+	"fmt"
 	"menace-go/llmServer"
 	"menace-go/model"
 	"strings"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/mattn/go-runewidth"
 )
 
-// LLMResponseMsg represents a message from the LLM
-type LLMResponseMsg struct {
-	Content string
-}
-
-// LoadingMsg represents a loading animation frame
-type LoadingMsg struct {
-	Frame int
-}
-
-// getLLMResponse is a command that fetches a response from the LLM
+// getLLMResponse is a command that fetches a response from the LLM.
+// it calls SendMessage from LlmService.
 func getLLMResponse(input string, agent *llmServer.Agent) tea.Cmd {
 	return func() tea.Msg {
-		// Run the agent to handle the input
-		if err := agent.Run(input); err != nil {
-			return LLMResponseMsg{Content: "Error: " + err.Error()}
-		}
-
-		// Get the final response from the LLM
 		llm := llmServer.GetInstance()
 		response, err := llm.SendMessage(input)
 		if err != nil {
@@ -43,22 +28,47 @@ func getLLMResponse(input string, agent *llmServer.Agent) tea.Cmd {
 	}
 }
 
-// loadingAnimation returns a command that sends loading animation frames
-func loadingAnimation() tea.Cmd {
-	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
-		return LoadingMsg{Frame: int((t.UnixNano() / int64(time.Millisecond*300)) % 4)}
-	})
-}
-
 // Update handles all incoming messages (keypresses, etc.).
+// Part of Bubble Tea Model interface
+// runs every time a key is pressed
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case LLMResponseMsg:
+		/*
+			If the llm returns a command, a new message to prompt the user to execute command is added
+		*/
 		// Remove loading message and add LLM response
 		if len(m.Messages) > 0 && strings.HasPrefix(m.Messages[len(m.Messages)-1].Content, "Thinking") {
 			m.Messages = m.Messages[:len(m.Messages)-1]
 		}
+
+		// Add the LLM response to messages
 		m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: msg.Content})
+
+		// Check if the response contains a command block
+		if strings.Contains(msg.Content, "```"+shellType) {
+			// Parse the command
+			parts := strings.Split(msg.Content, "```"+shellType)
+			for _, part := range parts[1:] {
+				endIdx := strings.Index(part, "```")
+				if endIdx == -1 {
+					continue
+				}
+
+				cmd := strings.TrimSpace(part[:endIdx])
+				if cmd != "" {
+					// TODO: Handle command here
+					m.Messages = append(m.Messages, model.Message{
+						Sender: "system",
+						Content: "Execute command?\n" + cmd + "\ny: execute" +
+							"\nn: don't execute" + "\ne:edit command",
+					})
+
+					m.waitingForCommand = true //flag set to true to handle command input
+				}
+			}
+		}
+
 		return m, nil
 
 	case LoadingMsg:
@@ -244,6 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Add loading message
 			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: "Thinking"})
 			// Get LLM response asynchronously
+			// TODO: Implement a new function to handle this, only needs to be handled once...
 			cmd := getLLMResponse(m.Input, m.agent)
 			// Start loading animation
 			loadingCmd := loadingAnimation()
@@ -290,7 +301,52 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Input = strings.Join(lines, "\n")
 			return m, nil
 
+		// Inserts a character at the cursor position or handles command input
 		default:
+			// Handle command input
+			if m.waitingForCommand && (msg.String() == "y" || msg.String() == "n" || msg.String() == "e") {
+				m.waitingForCommand = false
+
+				if msg.String() == "y" {
+					// Append a 'Processing...' message to indicate command execution
+					m.Messages = append(m.Messages, model.Message{Sender: "system", Content: "Processing..."})
+					// Parse most recent command from the LLM
+					command := llmServer.ParseCommand(m.Messages[len(m.Messages)-3].Content)
+					if command != nil {
+						// Execute command and get output
+						output, err := m.agent.ExecuteCommand(*command)
+						if err != nil {
+							m.Messages = append(m.Messages, model.Message{
+								Sender:  "system",
+								Content: fmt.Sprintf("Error executing command: %v", err),
+							})
+						} else {
+							// Send command output back to LLM
+							contextMsg := fmt.Sprintf("Command executed: %s\nResult: %s", command.Content, output)
+							llm := llmServer.GetInstance()
+							response, err := llm.SendMessage(contextMsg)
+							if err != nil {
+								m.Messages = append(m.Messages, model.Message{
+									Sender:  "system",
+									Content: fmt.Sprintf("Error getting LLM response: %v", err),
+								})
+							} else if len(response.Choices) > 0 {
+								m.Messages = append(m.Messages, model.Message{
+									Sender:  "llm",
+									Content: response.Choices[0].Message.Content,
+								})
+							}
+						}
+					}
+				}
+
+				// Reset input and cursor
+				m.Input = ""
+				m.CursorX = 0
+				m.CursorY = 0
+				return m, nil
+			}
+			// Handle normal character input
 			if len(msg.String()) == 1 {
 				// Insert character at cursor position
 				lines := strings.Split(m.Input, "\n")

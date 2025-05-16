@@ -23,6 +23,10 @@ var (
 	Menace-CLI is a Go-based CLI tool that uses large language models to provide intelligent terminal assistance.
 	You have access to the local file system and can execute commands in %s.
 
+	Before executing any command, explain your intent and reasoning.
+	Execute commands sequentially - one at a time.
+	After each command, you'll receive its output (especially for file operations like ls).
+
 	When you need to execute a command, format it like this:
 	`+"```"+shellType+"\n"+`your_command_here
 	`+"```\n"+`
@@ -32,7 +36,7 @@ var (
 	`+"```\n"+`
 
 	You should respond as if you are part of this real application, not a fictional tool.
-	Always explain what you're doing before executing commands, and explain the results after.`, shell)
+	`, shell)
 )
 
 // LLMService represents the singleton LLM service

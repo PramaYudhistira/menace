@@ -15,8 +15,9 @@ type Model struct {
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
 	// Cursor position in input (column, row)
-	CursorX int
-	CursorY int
+	CursorX           int
+	CursorY           int
+	waitingForCommand bool
 }
 
 func (m Model) Init() tea.Cmd {

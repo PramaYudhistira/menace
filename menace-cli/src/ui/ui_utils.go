@@ -1,6 +1,23 @@
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"menace-go/llmServer"
+	"strings"
+	"time"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// LoadingMsg represents a loading animation frame
+type LoadingMsg struct {
+	Frame int
+}
+
+// LLMResponseMsg represents a message from the LLM
+type LLMResponseMsg struct {
+	Content string
+}
 
 // Styles for Menace CLI UI
 // Includes "boxes" for chat and input area
@@ -33,4 +50,12 @@ var (
 			Italic(true)
 	// Style for the block cursor in the input
 	CursorStyle = lipgloss.NewStyle().Reverse(true)
+	shellType   = strings.Split(llmServer.ModelFactory{}.DetectShell(), "/")[1]
 )
+
+// loadingAnimation returns a command that sends loading animation frames
+func loadingAnimation() tea.Cmd {
+	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
+		return LoadingMsg{Frame: int((t.UnixNano() / int64(time.Millisecond*300)) % 4)}
+	})
+}

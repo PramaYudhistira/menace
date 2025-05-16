@@ -11,7 +11,7 @@ import (
 type Agent struct {
 	llmService *LLMService
 	mu         sync.Mutex
-	shell      string // Add this to store the detected shell
+	shell      string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
 }
 
 // NewAgent creates a new agent instance
@@ -25,15 +25,17 @@ func NewAgent(llmService *LLMService) *Agent {
 // Command represents a parsed command from the LLM response
 type Command struct {
 	Type    string // "shell", "file", etc.
-	Content string
+	Content string // the command to execute
 	Error   error
 }
 
 // parseResponse attempts to extract commands from the LLM response
+// note, currently unused...
 func (a *Agent) parseResponse(response string) ([]Command, error) {
 	commands := []Command{}
 
 	// Get shell type from the detected shell
+	// since its in the form "windows/CMD", "linux/bash", "darwin/bash" etc, we split into 2 parts
 	parts := strings.Split(a.shell, "/")
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid shell format: %s", a.shell)
@@ -41,6 +43,7 @@ func (a *Agent) parseResponse(response string) ([]Command, error) {
 	shellType := parts[1]
 
 	// Look for commands in the response
+	// same format as instructed in the system prompt
 	pattern := "```" + shellType
 	if strings.Contains(response, pattern) {
 		parts := strings.Split(response, pattern)
@@ -63,8 +66,43 @@ func (a *Agent) parseResponse(response string) ([]Command, error) {
 	return commands, nil
 }
 
+// parseCommand extracts the command found in the LLM response
+// Returns nil if no command is found
+func ParseCommand(response string) *Command {
+	// Look for the first command block
+	pattern := "```" + shellType
+	if !strings.Contains(response, pattern) {
+		return nil
+	}
+
+	// Split on the pattern and take the first command block
+	parts := strings.Split(response, pattern)
+	if len(parts) < 2 {
+		return nil
+	}
+
+	// Find the end of the command block
+	endIdx := strings.Index(parts[1], "```")
+	if endIdx == -1 {
+		return &Command{
+			Error: fmt.Errorf("malformed command block: missing closing ```"),
+		}
+	}
+
+	// Extract and trim the command
+	cmd := strings.TrimSpace(parts[1][:endIdx])
+	if cmd == "" {
+		return nil
+	}
+
+	return &Command{
+		Type:    "shell",
+		Content: cmd,
+	}
+}
+
 // executeCommand runs a single command and returns the result
-func (a *Agent) executeCommand(cmd Command) (string, error) {
+func (a *Agent) ExecuteCommand(cmd Command) (string, error) {
 	if cmd.Type != "shell" {
 		return "", fmt.Errorf("unsupported command type: %s", cmd.Type)
 	}
@@ -100,6 +138,7 @@ func (a *Agent) executeCommand(cmd Command) (string, error) {
 }
 
 // Run is the main agent loop that processes user input and executes commands
+// this main loop has multiple commands at the same time...
 func (a *Agent) Run(input string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -118,7 +157,7 @@ func (a *Agent) Run(input string) error {
 
 	// Execute each command
 	for _, cmd := range commands {
-		result, err := a.executeCommand(cmd)
+		result, err := a.ExecuteCommand(cmd)
 		if err != nil {
 			// Log error but continue with other commands
 			fmt.Printf("Error executing command: %v\n", err)
