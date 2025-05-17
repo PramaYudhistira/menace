@@ -24,7 +24,10 @@ func main() {
 
 	p := tea.NewProgram(
 		ui.NewModel(agent),
-		tea.WithAltScreen()) // alternate screen
+		tea.WithAltScreen(), // alternate screen
+		tea.WithMouseAllMotion(),
+	)
+
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error running Menace CLI:", err)
 		os.Exit(1)

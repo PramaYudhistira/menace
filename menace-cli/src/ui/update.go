@@ -1,0 +1,62 @@
+package ui
+
+import (
+	tea "github.com/charmbracelet/bubbletea"
+)
+
+// Update handles all incoming messages (keypresses, etc.).
+// Part of Bubble Tea Model interface
+// runs every time a key is pressed
+// each key press is represented by msg Type tea.Msg
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	// Styles to fit terminal size
+	case tea.WindowSizeMsg:
+		m.ResizeWindow(msg)
+
+	case tea.MouseMsg:
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			// fmt.Println("Mouse wheel up detected")
+			m.HandleScroll(1)
+		case tea.MouseButtonWheelDown:
+			// fmt.Println("Mouse wheel down detected")
+			m.HandleScroll(-1)
+		}
+
+	// Handle key presses
+	case tea.KeyMsg:
+		switch msg.String() {
+		//if ctrl+c is pressed, quit the program
+		case tea.KeyCtrlC.String():
+			return m, tea.Quit
+
+		//If Enter is pressed, send message to LLM
+		case tea.KeyEnter.String():
+			if m.Input == "" {
+				// if input is empty, no need to enter any message
+				// return early
+				return m, nil
+			}
+			m.AddUserMessage(m.Input)
+
+			m.ClearState()
+
+		case tea.KeyLeft.String(), tea.KeyRight.String():
+			m.HandleHorizontalCursorMovement(msg.String())
+
+		case tea.KeyBackspace.String():
+			m.HandleBackSpace()
+
+		//general key press
+		//Inserts single character input into the cursor position
+		default:
+			if len(msg.String()) == 1 {
+				m.InsertCharacter(msg.String())
+			}
+		}
+	}
+
+	return m, nil
+}
