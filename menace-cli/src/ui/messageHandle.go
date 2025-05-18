@@ -3,7 +3,6 @@ package ui
 import (
 	"fmt"
 	"menace-go/llmServer"
-	"menace-go/model"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -31,7 +30,7 @@ func getLLMResponse(input string, agent *llmServer.Agent) tea.Cmd {
 // Update handles all incoming messages (keypresses, etc.).
 // Part of Bubble Tea Model interface
 // runs every time a key is pressed
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) UpdateDeprecated(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case LLMResponseMsg:
 		/*
@@ -43,7 +42,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Add the LLM response to messages
-		m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: msg.Content})
+		m.Messages = append(m.Messages, Message{Sender: "llm", Content: msg.Content})
 
 		// Check if the response contains a command block
 		if strings.Contains(msg.Content, "```"+shellType) {
@@ -58,13 +57,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd := strings.TrimSpace(part[:endIdx])
 				if cmd != "" {
 					// TODO: Handle command here
-					m.Messages = append(m.Messages, model.Message{
+					m.Messages = append(m.Messages, Message{
 						Sender: "system",
 						Content: "Execute command?\n" + cmd + "\ny: execute" +
 							"\nn: don't execute" + "\ne:edit command",
 					})
-
 					m.waitingForCommand = true //flag set to true to handle command input
+					fmt.Println("waiting for command is set to true")
 				}
 			}
 		}
@@ -250,11 +249,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil // Don't allow new message while thinking
 			}
 			// Append user message
-			m.Messages = append(m.Messages, model.Message{Sender: "user", Content: m.Input})
+			m.Messages = append(m.Messages, Message{Sender: "user", Content: m.Input})
 			// Add loading message
-			m.Messages = append(m.Messages, model.Message{Sender: "llm", Content: "Thinking"})
+			m.Messages = append(m.Messages, Message{Sender: "llm", Content: "Thinking"})
 			// Get LLM response asynchronously
-			// TODO: Implement a new function to handle this, only needs to be handled once...
 			cmd := getLLMResponse(m.Input, m.agent)
 			// Start loading animation
 			loadingCmd := loadingAnimation()
@@ -306,17 +304,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Handle command input
 			if m.waitingForCommand && (msg.String() == "y" || msg.String() == "n" || msg.String() == "e") {
 				m.waitingForCommand = false
+				fmt.Println("waiting for command is set to false")
 
 				if msg.String() == "y" {
 					// Append a 'Processing...' message to indicate command execution
-					m.Messages = append(m.Messages, model.Message{Sender: "system", Content: "Processing..."})
+					m.Messages = append(m.Messages, Message{Sender: "system", Content: "Processing..."})
 					// Parse most recent command from the LLM
 					command := llmServer.ParseCommand(m.Messages[len(m.Messages)-3].Content)
 					if command != nil {
 						// Execute command and get output
 						output, err := m.agent.ExecuteCommand(*command)
 						if err != nil {
-							m.Messages = append(m.Messages, model.Message{
+							m.Messages = append(m.Messages, Message{
 								Sender:  "system",
 								Content: fmt.Sprintf("Error executing command: %v", err),
 							})
@@ -326,12 +325,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							llm := llmServer.GetInstance()
 							response, err := llm.SendMessage(contextMsg)
 							if err != nil {
-								m.Messages = append(m.Messages, model.Message{
+								m.Messages = append(m.Messages, Message{
 									Sender:  "system",
 									Content: fmt.Sprintf("Error getting LLM response: %v", err),
 								})
 							} else if len(response.Choices) > 0 {
-								m.Messages = append(m.Messages, model.Message{
+								m.Messages = append(m.Messages, Message{
 									Sender:  "llm",
 									Content: response.Choices[0].Message.Content,
 								})
@@ -344,10 +343,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Input = ""
 				m.CursorX = 0
 				m.CursorY = 0
-				return m, nil
-			}
-			// Handle normal character input
-			if len(msg.String()) == 1 {
+			} else if len(msg.String()) == 1 {
 				// Insert character at cursor position
 				lines := strings.Split(m.Input, "\n")
 				runes := []rune(lines[m.CursorY])
