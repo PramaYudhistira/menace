@@ -6,6 +6,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
+	"github.com/mattn/go-runewidth"
 )
 
 type Model struct {
@@ -164,6 +165,26 @@ func (m *Model) HandleDelete() {
 		lines = append(lines[:m.CursorY+1], lines[m.CursorY+2:]...)
 		m.Input = strings.Join(lines, "\n")
 	}
+}
+
+// UpdateWindowStart ensures the input window is scrolled so the cursor is always visible.
+func (m *Model) UpdateWindowStart(maxInputW int) {
+	if m.CursorX < m.WindowStart {
+		m.WindowStart = m.CursorX
+	} else if m.CursorX >= m.WindowStart+maxInputW {
+		m.WindowStart = m.CursorX - maxInputW + 1
+	}
+	if m.WindowStart < 0 {
+		m.WindowStart = 0
+	}
+}
+
+// GetMaxInputWidth returns the maximum width of the input field.
+func (m *Model) GetMaxInputWidth() int {
+	prefix := "> "
+	boxW := m.Width - 24
+	prefixW := runewidth.StringWidth(prefix)
+	return boxW - 2 - prefixW
 }
 
 // main entry point for the UI

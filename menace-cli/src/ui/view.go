@@ -131,8 +131,6 @@ func (m Model) View() string {
 	if windowStart < 0 {
 		windowStart = 0
 	}
-	// Update the model's WindowStart so it persists
-	m.WindowStart = windowStart
 
 	windowEnd := windowStart + maxInputW
 	if windowEnd > len(inputRunes) {

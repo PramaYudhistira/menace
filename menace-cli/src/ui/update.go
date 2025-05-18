@@ -11,6 +11,9 @@ import (
 //
 // each key press is represented by msg Type tea.Msg
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	//flag to check if input or cursor position was modified during handling of keypress
+	changed := false
+
 	switch msg := msg.(type) {
 
 	// Styles to fit terminal size
@@ -46,22 +49,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Case for horizontal cursor movement
 		case tea.KeyLeft.String(), tea.KeyRight.String():
 			m.HandleHorizontalCursorMovement(msg.String())
+			changed = true
 
 		//Case for backspace key press
 		case tea.KeyBackspace.String():
 			m.HandleBackSpace()
+			changed = true
 
 		//Case for delete key press
 		case tea.KeyDelete.String():
 			m.HandleDelete()
+			changed = true
 
 		//general key press
 		//Inserts single character input into the cursor position
 		default:
 			if len(msg.String()) == 1 {
 				m.InsertCharacter(msg.String())
+				changed = true
 			}
 		}
+	}
+
+	if changed {
+		m.UpdateWindowStart(m.GetMaxInputWidth())
 	}
 
 	return m, nil
