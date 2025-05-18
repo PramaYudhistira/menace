@@ -5,8 +5,10 @@ import (
 )
 
 // Update handles all incoming messages (keypresses, etc.).
+//
 // Part of Bubble Tea Model interface
 // runs every time a key is pressed
+//
 // each key press is represented by msg Type tea.Msg
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -32,22 +34,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC.String():
 			return m, tea.Quit
 
-		//If Enter is pressed, send message to LLM
+		//Case for Enter key press
+		//Should send message to LLM
 		case tea.KeyEnter.String():
 			if m.Input == "" {
-				// if input is empty, no need to enter any message
-				// return early
 				return m, nil
 			}
 			m.AddUserMessage(m.Input)
-
 			m.ClearState()
 
+		//Case for horizontal cursor movement
 		case tea.KeyLeft.String(), tea.KeyRight.String():
 			m.HandleHorizontalCursorMovement(msg.String())
 
+		//Case for backspace key press
 		case tea.KeyBackspace.String():
 			m.HandleBackSpace()
+
+		//Case for delete key press
+		case tea.KeyDelete.String():
+			m.HandleDelete()
 
 		//general key press
 		//Inserts single character input into the cursor position

@@ -20,6 +20,7 @@ type Model struct {
 	CursorX           int
 	CursorY           int
 	waitingForCommand bool
+	WindowStart       int // Start of the visible input window
 }
 
 func (m Model) Init() tea.Cmd {
@@ -146,6 +147,22 @@ func (m *Model) HandleHorizontalCursorMovement(direction string) {
 			m.CursorY++
 			m.CursorX = 0
 		}
+	}
+}
+
+// Handles delete key press
+func (m *Model) HandleDelete() {
+	lines := strings.Split(m.Input, "\n")
+	runes := []rune(lines[m.CursorY])
+	if m.CursorX < len(runes) {
+		// Remove the character at the cursor position
+		lines[m.CursorY] = string(runes[:m.CursorX]) + string(runes[m.CursorX+1:])
+		m.Input = strings.Join(lines, "\n")
+	} else if m.CursorY < len(lines)-1 {
+		// If at the end of the line, merge with the next line
+		lines[m.CursorY] += lines[m.CursorY+1]
+		lines = append(lines[:m.CursorY+1], lines[m.CursorY+2:]...)
+		m.Input = strings.Join(lines, "\n")
 	}
 }
 
