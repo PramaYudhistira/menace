@@ -51,6 +51,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.HandleHorizontalCursorMovement(msg.String())
 			changed = true
 
+		//Case for vertical cursor movement
+		case tea.KeyUp.String(), tea.KeyDown.String():
+			m.HandleVerticalCursorMovement(msg.String())
+			changed = true
+
 		//Case for backspace key press
 		case tea.KeyBackspace.String():
 			m.HandleBackSpace()
@@ -59,6 +64,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Case for delete key press
 		case tea.KeyDelete.String():
 			m.HandleDelete()
+			changed = true
+
+		//Case for newline key press
+		case tea.KeyCtrlL.String():
+			m.InsertNewLine()
 			changed = true
 
 		//general key press

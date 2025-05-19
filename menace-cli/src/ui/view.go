@@ -116,54 +116,50 @@ func (m Model) View() string {
 	prefix := "> "
 	boxW := termWidth - 24
 	prefixW := runewidth.StringWidth(prefix)
-	maxInputW := boxW - 2 - prefixW // minus border and prefix
+	// maxInputW := boxW - 2 - prefixW // no longer needed
 
-	inputRunes := []rune(m.Input)
-	cursorPos := m.CursorX
-
-	// Track the start of the visible window using m.WindowStart
-	windowStart := m.WindowStart
-	if cursorPos < windowStart {
-		windowStart = cursorPos
-	} else if cursorPos >= windowStart+maxInputW {
-		windowStart = cursorPos - maxInputW + 1
+	// Multiline input rendering with global horizontal scroll
+	lines := strings.Split(m.Input, "\n")
+	indent := strings.Repeat(" ", prefixW)
+	maxInputW := boxW - 2 - prefixW
+	var rendered []string
+	for i, line := range lines {
+		curPfx := indent
+		if i == 0 {
+			curPfx = prefix
+		}
+		runes := []rune(line)
+		windowStart := m.WindowStart
+		windowEnd := windowStart + maxInputW
+		if windowEnd > len(runes) {
+			windowEnd = len(runes)
+		}
+		visible := runes[windowStart:windowEnd]
+		if i == m.CursorY {
+			// Place block cursor at the correct position within the visible window
+			cursorInWindow := m.CursorX - windowStart
+			if cursorInWindow >= 0 && cursorInWindow <= len(visible) {
+				before := string(visible[:cursorInWindow])
+				ch := " "
+				if cursorInWindow < len(visible) {
+					ch = string(visible[cursorInWindow])
+				}
+				after := ""
+				if cursorInWindow+1 <= len(visible) {
+					after = string(visible[cursorInWindow+1:])
+				}
+				lineStr := before + lipgloss.NewStyle().Reverse(true).Render(ch) + after
+				rendered = append(rendered, curPfx+lineStr)
+				continue
+			}
+		}
+		rendered = append(rendered, curPfx+string(visible))
 	}
-	if windowStart < 0 {
-		windowStart = 0
-	}
-
-	windowEnd := windowStart + maxInputW
-	if windowEnd > len(inputRunes) {
-		windowEnd = len(inputRunes)
-	}
-	visibleInput := string(inputRunes[windowStart:windowEnd])
-
-	// Cursor position in the visible window
-	cursorInWindow := cursorPos - windowStart
-	if cursorInWindow < 0 {
-		cursorInWindow = 0
-	}
-	if cursorInWindow > len([]rune(visibleInput)) {
-		cursorInWindow = len([]rune(visibleInput))
-	}
-
-	// Render the input with the cursor
-	runes := []rune(visibleInput)
-	var inputLine string
-	if cursorInWindow < len(runes) {
-		before := string(runes[:cursorInWindow])
-		ch := string(runes[cursorInWindow])
-		after := string(runes[cursorInWindow+1:])
-		inputLine = prefix + before + CursorStyle.Render(ch) + after
-	} else {
-		before := string(runes)
-		inputLine = prefix + before + CursorStyle.Render(" ")
-	}
-
+	inputContent := strings.Join(rendered, "\n")
 	inputPrompt := InputStyle.
 		Border(lipgloss.RoundedBorder()).
 		Width(boxW).
-		Render(inputLine)
+		Render(inputContent)
 
 	// Combine chat and input
 	mainArea := lipgloss.JoinVertical(lipgloss.Top, chatBox, inputPrompt)

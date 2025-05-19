@@ -21,7 +21,7 @@ type Model struct {
 	CursorX           int
 	CursorY           int
 	waitingForCommand bool
-	WindowStart       int // Start of the visible input window
+	WindowStart       int // Global horizontal window start for all lines
 }
 
 func (m Model) Init() tea.Cmd {
@@ -45,21 +45,49 @@ func (m *Model) ResizeWindow(msg tea.Msg) {
 	m.Scroll = 0
 }
 
-// Inserts a character at the cursor position
-func (m *Model) InsertCharacter(character string) {
-	//TODO: perhaps there is a better way to handle detection of lines?
-	lines := strings.Split(m.Input, "\n")
+// UpdateWindowStart ensures the input window is scrolled so the cursor is always visible (applies to all lines).
+func (m *Model) UpdateWindowStart(maxInputW int) {
+	start := m.WindowStart
+	if m.CursorX < start {
+		start = m.CursorX
+	} else if m.CursorX >= start+maxInputW {
+		start = m.CursorX - maxInputW + 1
+	}
+	if start < 0 {
+		start = 0
+	}
+	m.WindowStart = start
+}
 
+// InsertNewLine inserts a new line at the cursor position and moves the cursor to the start of the new line.
+func (m *Model) InsertNewLine() {
+	lines := strings.Split(m.Input, "\n")
+	// Split current line at cursor
+	runes := []rune(lines[m.CursorY])
+	before := string(runes[:m.CursorX])
+	after := string(runes[m.CursorX:])
+	newLines := append([]string{}, lines[:m.CursorY+1]...)
+	newLines[len(newLines)-1] = before
+	newLines = append(newLines, after)
+	if m.CursorY+1 < len(lines) {
+		newLines = append(newLines, lines[m.CursorY+1:]...)
+	}
+	m.Input = strings.Join(newLines, "\n")
+	m.CursorY++
+	m.CursorX = 0
+}
+
+// InsertCharacter inserts a character at the cursor position.
+func (m *Model) InsertCharacter(character string) {
+	lines := strings.Split(m.Input, "\n")
+	// Ensure CursorY is a valid index
+	for len(lines) <= m.CursorY {
+		lines = append(lines, "")
+	}
 	//Get current line and convert to runes (Unicode handling)
 	runes := []rune(lines[m.CursorY])
-
-	//get character that was pressed and convert to rune, to support emojis, accented characters and so on
 	ch := []rune(character)[0]
-
-	//actually insert the character at cursor position
 	newLine := string(runes[:m.CursorX]) + string(ch) + string(runes[m.CursorX:])
-
-	//update the new line on the current line
 	lines[m.CursorY] = newLine
 	m.CursorX++
 	m.Input = strings.Join(lines, "\n")
@@ -167,24 +195,38 @@ func (m *Model) HandleDelete() {
 	}
 }
 
-// UpdateWindowStart ensures the input window is scrolled so the cursor is always visible.
-func (m *Model) UpdateWindowStart(maxInputW int) {
-	if m.CursorX < m.WindowStart {
-		m.WindowStart = m.CursorX
-	} else if m.CursorX >= m.WindowStart+maxInputW {
-		m.WindowStart = m.CursorX - maxInputW + 1
-	}
-	if m.WindowStart < 0 {
-		m.WindowStart = 0
-	}
-}
-
 // GetMaxInputWidth returns the maximum width of the input field.
 func (m *Model) GetMaxInputWidth() int {
 	prefix := "> "
 	boxW := m.Width - 24
 	prefixW := runewidth.StringWidth(prefix)
 	return boxW - 2 - prefixW
+}
+
+// Handles vertical cursor movement.
+//
+// Maintains the cursor's X position when moving between lines when possible.
+func (m *Model) HandleVerticalCursorMovement(direction string) {
+	lines := strings.Split(m.Input, "\n")
+	if direction == tea.KeyUp.String() {
+		if m.CursorY > 0 {
+			m.CursorY--
+			// Try to maintain X position, but don't exceed line length
+			runes := []rune(lines[m.CursorY])
+			if m.CursorX > len(runes) {
+				m.CursorX = len(runes)
+			}
+		}
+	} else if direction == tea.KeyDown.String() {
+		if m.CursorY < len(lines)-1 {
+			m.CursorY++
+			// Try to maintain X position, but don't exceed line length
+			runes := []rune(lines[m.CursorY])
+			if m.CursorX > len(runes) {
+				m.CursorX = len(runes)
+			}
+		}
+	}
 }
 
 // main entry point for the UI
