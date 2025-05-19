@@ -22,6 +22,13 @@ type Model struct {
 	CursorY           int
 	waitingForCommand bool
 	WindowStart       int // Global horizontal window start for all lines
+	IsHighlighting    bool
+	// Selection state
+	SelectionStartX int
+	SelectionStartY int
+	SelectionEndX   int
+	SelectionEndY   int
+	HasSelection    bool
 }
 
 func (m Model) Init() tea.Cmd {
@@ -234,6 +241,18 @@ func (m *Model) HandleVerticalCursorMovement(direction string) {
 	}
 }
 
+// SelectAll selects all text in the input area
+func (m *Model) SelectAll() {
+	lines := strings.Split(m.Input, "\n")
+	if len(lines) > 0 {
+		m.HasSelection = true
+		m.SelectionStartX = 0
+		m.SelectionStartY = 0
+		m.SelectionEndX = len([]rune(lines[len(lines)-1]))
+		m.SelectionEndY = len(lines) - 1
+	}
+}
+
 // main entry point for the UI
 func NewModel(agent *llmServer.Agent) *Model {
 	return &Model{
@@ -242,4 +261,6 @@ func NewModel(agent *llmServer.Agent) *Model {
 		CursorY: 0,
 	}
 }
+
+
 
