@@ -169,7 +169,7 @@ func (m Model) View() string {
 		visible := runes[windowStart:windowEnd]
 
 		// Handle highlighting
-		if m.HasSelection {
+		if m.IsHighlighting {
 			lineStr := ""
 			for j, r := range visible {
 				pos := windowStart + j

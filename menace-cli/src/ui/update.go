@@ -32,7 +32,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseButtonLeft:
 			if msg.Action == tea.MouseActionRelease {
 				// Clear any existing selection
-				m.HasSelection = false
+				m.IsHighlighting = false
 				m.SelectionStartX = 0
 				m.SelectionStartY = 0
 				m.SelectionEndX = 0
@@ -95,11 +95,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Inserts single character input into the cursor position
 		default:
 			if len(msg.String()) == 1 {
-				if m.HasSelection {
+				if m.IsHighlighting {
 					m.Input = ""
 					m.CursorX = 0
 					m.CursorY = 0
-					m.HasSelection = false
+					m.IsHighlighting = false
 					m.SelectionStartX = 0
 					m.SelectionStartY = 0
 					m.SelectionEndX = 0
