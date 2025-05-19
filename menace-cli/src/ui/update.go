@@ -57,7 +57,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			changed = true
 
 		//Case for delete key press
-		case tea.KeyDelete.String():
+		case tea.KeyDelete.String(), tea.KeyCtrlD.String():
 			m.HandleDelete()
 			changed = true
 
