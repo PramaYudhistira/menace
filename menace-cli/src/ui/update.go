@@ -67,7 +67,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			changed = true
 
 		//Case for newline key press
-		case tea.KeyCtrlL.String():
+		case tea.KeyShiftDown.String():
 			m.InsertNewLine()
 			changed = true
 
