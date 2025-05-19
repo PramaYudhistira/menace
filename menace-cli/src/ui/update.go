@@ -2,6 +2,7 @@ package ui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 // Update handles all incoming messages (keypresses, etc.).
@@ -28,6 +29,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.MouseButtonWheelDown:
 			// fmt.Println("Mouse wheel down detected")
 			m.HandleScroll(-1)
+		case tea.MouseButtonLeft:
+			if msg.Action == tea.MouseActionRelease {
+				if zone.Get("help").InBounds(msg) {
+					m.SystemMessage("testing system message")
+					return m, nil
+				}
+			}
 		}
 
 	// Handle key presses
@@ -71,6 +79,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.InsertNewLine()
 			changed = true
 
+		
 		//general key press
 		//Inserts single character input into the cursor position
 		default:

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	zone "github.com/lrstanley/bubblezone"
 )
 
 func main() {
@@ -21,7 +22,7 @@ func main() {
 
 	// Initialize agent
 	agent := llmServer.NewAgent(llm)
-
+	zone.NewGlobal()
 	p := tea.NewProgram(
 		ui.NewModel(agent),
 		tea.WithAltScreen(), // alternate screen
