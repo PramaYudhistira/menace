@@ -8,7 +8,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node scripts/build-all.js",
-    "build-windows": "node scripts/build-windows.js"
+    "build-windows": "node scripts/build-windows.js",
+    "build-mac": "node scripts/build-mac.js"
   },
   "keywords": [],
   "author": "",
