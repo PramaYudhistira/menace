@@ -1,5 +1,7 @@
 package ui
 
+//This entire file is deprecated...
+
 import (
 	"fmt"
 	"menace-go/llmServer"
