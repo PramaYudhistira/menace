@@ -57,13 +57,12 @@ var (
 	shellType   = strings.Split(llmServer.ModelFactory{}.DetectShell(), "/")[1]
 
 	ButtonStyle = lipgloss.NewStyle().
-	Padding(0, 2).
-	Margin(0, 1).
-	Background(lipgloss.Color("#44475a")).
-	Foreground(lipgloss.Color("#f8f8f2")).
-	Bold(true).
-	Border(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("#bd93f9"))
+			Padding(0, 2).
+			Margin(0, 1).
+			Foreground(lipgloss.Color("#f8f8f2")).
+			Bold(true).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#bd93f9"))
 )
 
 // loadingAnimation returns a command that sends loading animation frames

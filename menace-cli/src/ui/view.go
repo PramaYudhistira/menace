@@ -50,7 +50,8 @@ func (m Model) View() string {
 	var SectionHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#bd93f9"))
-	sidebar := HeaderStyle.Render("👹 Menace CLI") +
+	sidebar := HeaderStyle.Render("Menace CLI") +
+		"\n" + SectionHeaderStyle.MarginBottom(1).Render("Running on:") +
 		"\n  " + osShellInfo +
 		"\n" + SectionHeaderStyle.Render("Working Directory:") +
 		"\n" + formattedDir +
