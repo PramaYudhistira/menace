@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/cellbuf"
+	zone "github.com/lrstanley/bubblezone"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -27,14 +28,34 @@ func (m Model) View() string {
 	}
 	// Sidebar header and controls
 	mf := llmServer.ModelFactory{}
-	sidebarContent := HeaderStyle.Render("👹 Menace CLI") +
-		"\n" + "Working Directory:" +
-		"\n" + dir +
-		"\n" + "Running on:" +
-		"\n" + mf.DetectShell() +
-		"\n`Ctrl + C` to exit" +
-		"\n`↑`/`↓` to scroll"
-	sidebar := SidebarStyle.Render(sidebarContent)
+	dirParts := strings.Split(dir, string(os.PathSeparator))
+	formattedDir := ""
+	for i, part := range dirParts {
+		if part == "" && i == 0 {
+			formattedDir += "/\n"
+			continue
+		}
+		if part != "" {
+			formattedDir += part + "/\n"
+		}
+	}
+
+	var InfoStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#8be9fd")).
+		Bold(true).MarginBottom(1)
+	osShellInfo := InfoStyle.Render("💻 " + mf.DetectShell())
+	helpButton := zone.Mark("help", ButtonStyle.Render("help"))
+	// Use helpButton in your sidebar string
+
+	var SectionHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("#bd93f9"))
+	sidebar := HeaderStyle.Render("👹 Menace CLI") +
+		"\n  " + osShellInfo +
+		"\n" + SectionHeaderStyle.Render("Working Directory:") +
+		"\n" + formattedDir +
+		"\n" + helpButton
+
 	sidebar = lipgloss.NewStyle().
 		Align(lipgloss.Left, lipgloss.Top).
 		Width(18).              // match updated sidebar width
@@ -61,8 +82,10 @@ func (m Model) View() string {
 			styleFunc = LLMStyle.Render
 			prefix = "💭 "
 		default:
-			styleFunc = func(parts ...string) string { return strings.Join(parts, "") }
-			prefix = ""
+			//system style
+			styleFunc = SystemStyle.Render
+			prefix = "👾 "
+
 		}
 		// measure prefix width and prepare indent for wrapped lines
 		prefixWidth := runewidth.StringWidth(prefix)
@@ -182,7 +205,7 @@ func (m Model) View() string {
 	screen := lipgloss.JoinHorizontal(lipgloss.Top, sidebar, mainArea)
 
 	// Add horizontal margins; place UI flush to top so chat-box top border is visible
-	return lipgloss.NewStyle().
+	return zone.Scan(lipgloss.NewStyle().
 		Margin(0, 2). // top/bottom, left/right
-		Render(screen)
+		Render(screen))
 }
