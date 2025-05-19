@@ -98,6 +98,11 @@ func (m *Model) AddUserMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "user", Content: message})
 }
 
+// Adds a system message to the chat history
+func (m *Model) SystemMessage(message string) {
+	m.Messages = append(m.Messages, Message{Sender: "system", Content: message})
+}
+
 // Handle mouse scrolling
 func (m *Model) HandleScroll(direction int) {
 	if direction > 0 { // Scroll up
@@ -237,3 +242,4 @@ func NewModel(agent *llmServer.Agent) *Model {
 		CursorY: 0,
 	}
 }
+
