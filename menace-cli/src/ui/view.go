@@ -32,7 +32,6 @@ func (m Model) View() string {
 	formattedDir := ""
 	for i, part := range dirParts {
 		if part == "" && i == 0 {
-			formattedDir += "/\n"
 			continue
 		}
 		if part != "" {

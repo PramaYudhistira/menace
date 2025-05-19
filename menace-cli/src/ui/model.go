@@ -242,3 +242,4 @@ func NewModel(agent *llmServer.Agent) *Model {
 		CursorY: 0,
 	}
 }
+

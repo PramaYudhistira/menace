@@ -79,6 +79,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.InsertNewLine()
 			changed = true
 
+		
 		//general key press
 		//Inserts single character input into the cursor position
 		default:
