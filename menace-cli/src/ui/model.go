@@ -139,16 +139,16 @@ func (m *Model) HandleBackSpace() {
 	// Delete character before cursor or merge lines
 	lines := strings.Split(m.Input, "\n")
 	if m.CursorX > 0 {
+		// Delete one character before cursor
 		runes := []rune(lines[m.CursorY])
-		lines[m.CursorY] = string(runes[:m.CursorX-1])
+		lines[m.CursorY] = string(runes[:m.CursorX-1]) + string(runes[m.CursorX:])
 		m.CursorX--
 	} else if m.CursorY > 0 {
 		// Merge with previous line
 		prev := lines[m.CursorY-1]
 		m.CursorX = len([]rune(prev))
 		lines[m.CursorY-1] += lines[m.CursorY]
-
-		// Spread operator to ensure future lines are also updated in their respective positions
+		// Remove current line
 		lines = append(lines[:m.CursorY], lines[m.CursorY+1:]...)
 		m.CursorY--
 	}

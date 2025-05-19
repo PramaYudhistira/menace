@@ -130,9 +130,18 @@ func (m Model) View() string {
 		}
 		runes := []rune(line)
 		windowStart := m.WindowStart
+		if windowStart < 0 {
+			windowStart = 0
+		}
+		if windowStart > len(runes) {
+			windowStart = len(runes)
+		}
 		windowEnd := windowStart + maxInputW
 		if windowEnd > len(runes) {
 			windowEnd = len(runes)
+		}
+		if windowEnd < windowStart {
+			windowEnd = windowStart
 		}
 		visible := runes[windowStart:windowEnd]
 		if i == m.CursorY {
@@ -149,6 +158,11 @@ func (m Model) View() string {
 					after = string(visible[cursorInWindow+1:])
 				}
 				lineStr := before + lipgloss.NewStyle().Reverse(true).Render(ch) + after
+				rendered = append(rendered, curPfx+lineStr)
+				continue
+			} else if len(runes) == 0 || m.CursorX == 0 {
+				// Show cursor at start of empty line or when cursor is at position 0
+				lineStr := lipgloss.NewStyle().Reverse(true).Render(" ")
 				rendered = append(rendered, curPfx+lineStr)
 				continue
 			}
