@@ -19,9 +19,18 @@ type Model struct {
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
 	// Cursor position in input (column, row)
-	CursorX     int
-	CursorY     int
-	WindowStart int // Global horizontal window start for all lines
+
+	CursorX           int
+	CursorY           int
+	waitingForCommand bool
+	WindowStart       int // Global horizontal window start for all lines
+
+	SelectionStartX int
+	SelectionStartY int
+	SelectionEndX   int
+	SelectionEndY   int
+	IsHighlighting  bool
+
 }
 
 func (m Model) Init() tea.Cmd {
@@ -235,6 +244,18 @@ func (m *Model) HandleVerticalCursorMovement(direction string) {
 				m.CursorX = len(runes)
 			}
 		}
+	}
+}
+
+// SelectAll selects all text in the input area
+func (m *Model) SelectAll() {
+	lines := strings.Split(m.Input, "\n")
+	if len(lines) > 0 {
+		m.IsHighlighting = true
+		m.SelectionStartX = 0
+		m.SelectionStartY = 0
+		m.SelectionEndX = len([]rune(lines[len(lines)-1]))
+		m.SelectionEndY = len(lines) - 1
 	}
 }
 

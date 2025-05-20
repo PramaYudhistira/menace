@@ -33,6 +33,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.HandleScroll(-1)
 		case tea.MouseButtonLeft:
 			if msg.Action == tea.MouseActionRelease {
+				// Clear any existing selection
+				m.IsHighlighting = false
+				m.SelectionStartX = 0
+				m.SelectionStartY = 0
+				m.SelectionEndX = 0
+				m.SelectionEndY = 0
+
 				if zone.Get("help").InBounds(msg) {
 					m.AddSystemMessage("testing system message")
 					return m, nil
@@ -93,10 +100,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.InsertNewLine()
 			changed = true
 
+    //Case for ctrl A key press
+		case tea.KeyCtrlA.String():
+			m.IsHighlighting = true
+			m.SelectAll()
+			changed = true
+
 		//general key press
 		//Inserts single character input into the cursor position
 		default:
 			if len(msg.String()) == 1 {
+				if m.IsHighlighting {
+					m.Input = ""
+					m.CursorX = 0
+					m.CursorY = 0
+					m.IsHighlighting = false
+					m.SelectionStartX = 0
+					m.SelectionStartY = 0
+					m.SelectionEndX = 0
+					m.SelectionEndY = 0
+				}
 				m.InsertCharacter(msg.String())
 				changed = true
 			}

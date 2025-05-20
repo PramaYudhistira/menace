@@ -167,6 +167,28 @@ func (m Model) View() string {
 			windowEnd = windowStart
 		}
 		visible := runes[windowStart:windowEnd]
+
+		// Handle highlighting
+		if m.IsHighlighting {
+			lineStr := ""
+			for j, r := range visible {
+				pos := windowStart + j
+				isSelected := (i > m.SelectionStartY || (i == m.SelectionStartY && pos >= m.SelectionStartX)) &&
+					(i < m.SelectionEndY || (i == m.SelectionEndY && pos <= m.SelectionEndX))
+
+				if isSelected {
+					lineStr += lipgloss.NewStyle().
+						Background(lipgloss.Color("#8be9fd")). // Light blue background
+						Foreground(lipgloss.Color("#000000")). // Black text for contrast
+						Render(string(r))
+				} else {
+					lineStr += string(r)
+				}
+			}
+			rendered = append(rendered, curPfx+lineStr)
+			continue
+		}
+
 		if i == m.CursorY {
 			// Place block cursor at the correct position within the visible window
 			cursorInWindow := m.CursorX - windowStart
