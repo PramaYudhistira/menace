@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"context"
+
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 )
@@ -39,7 +41,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectionEndY = 0
 
 				if zone.Get("help").InBounds(msg) {
-					m.SystemMessage("testing system message")
+					m.AddSystemMessage("testing system message")
 					return m, nil
 				}
 			}
@@ -58,7 +60,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.Input == "" {
 				return m, nil
 			}
+
+			// Add user message to UI
 			m.AddUserMessage(m.Input)
+
+			// Send to agent and get response
+			response, err := m.agent.SendMessage(context.Background(), m.Input)
+			if err != nil {
+				m.AddSystemMessage("Error: " + err.Error())
+			} else {
+				m.AddAgentMessage(response)
+			}
+
+			// Clear input
 			m.ClearState()
 
 		//Case for horizontal cursor movement
@@ -82,10 +96,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			changed = true
 
 		//Case for newline key press
-		case tea.KeyCtrlL.String():
+		case tea.KeyShiftDown.String():
 			m.InsertNewLine()
 			changed = true
 
+    //Case for ctrl A key press
 		case tea.KeyCtrlA.String():
 			m.IsHighlighting = true
 			m.SelectAll()

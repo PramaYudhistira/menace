@@ -80,7 +80,7 @@ func (m Model) View() string {
 			prefix = "> "
 		case "llm":
 			styleFunc = LLMStyle.Render
-			prefix = "💭 "
+			prefix = "🤖 "
 		default:
 			//system style
 			styleFunc = SystemStyle.Render
@@ -207,7 +207,7 @@ func (m Model) View() string {
 				continue
 			} else if len(runes) == 0 || m.CursorX == 0 {
 				// Show cursor at start of empty line or when cursor is at position 0
-				lineStr := lipgloss.NewStyle().Reverse(true).Render(" ")
+				lineStr := lipgloss.NewStyle().Reverse(true).Render(" ") + string(visible)
 				rendered = append(rendered, curPfx+lineStr)
 				continue
 			}
