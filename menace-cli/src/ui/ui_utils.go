@@ -50,8 +50,9 @@ var (
 			Bold(true)
 
 	LLMStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("4")).
-			Italic(true)
+			Foreground(lipgloss.Color("#8be9fd")).
+			Italic(true).
+			Bold(true)
 	// Style for the block cursor in the input
 	CursorStyle = lipgloss.NewStyle().Reverse(true)
 	shellType   = strings.Split(llmServer.ModelFactory{}.DetectShell(), "/")[1]

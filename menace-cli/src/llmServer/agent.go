@@ -1,25 +1,119 @@
 package llmServer
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 	"sync"
+
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
 )
 
 // Agent represents the main agent that processes LLM responses and executes commands
+// Does not include System messages
 type Agent struct {
-	llmService *LLMService
-	mu         sync.Mutex
-	shell      string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
+	llm      llms.Model
+	mu       sync.Mutex
+	shell    string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
+	messages []llms.MessageContent
 }
 
 // NewAgent creates a new agent instance
-func NewAgent(llmService *LLMService) *Agent {
-	return &Agent{
-		llmService: llmService,
-		shell:      ModelFactory{}.DetectShell(),
+func NewAgent(apiKey string) (*Agent, error) {
+
+	// Right now, o3-2025-04-16 cannot be used with the openai package...
+	// Perhaps its time for OSS contribution again?
+	// it wont work with o3-2025-04-16 since we can't set temperature to 0 because openai package is broken
+	llm, err := openai.New(
+		openai.WithToken(apiKey),
+		openai.WithModel("gpt-4.1-2025-04-14"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OpenAI client: %v", err)
 	}
+
+	return &Agent{
+		llm:   llm,
+		shell: ModelFactory{}.DetectShell(),
+		messages: []llms.MessageContent{
+			{
+				Role:  llms.ChatMessageTypeSystem,
+				Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(ModelFactory{}.DetectShell())}},
+			},
+		},
+	}, nil
+}
+
+// SendMessage sends a message to the LLM and returns the response
+func (a *Agent) SendMessage(ctx context.Context, input string) (string, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Add user message to history
+	a.messages = append(a.messages, llms.MessageContent{
+		Role:  llms.ChatMessageTypeHuman,
+		Parts: []llms.ContentPart{llms.TextContent{Text: input}},
+	})
+
+	// Get response from LLM
+	response, err := a.llm.GenerateContent(ctx, a.messages)
+	if err != nil {
+		return "", fmt.Errorf("failed to get response from LLM: %v", err)
+	}
+
+	// Extract the response text
+	var responseText string
+	if len(response.Choices) > 0 {
+		responseText = response.Choices[0].Content
+	}
+
+	// Add assistant's response to history
+	a.messages = append(a.messages, llms.MessageContent{
+		Role:  llms.ChatMessageTypeAI,
+		Parts: []llms.ContentPart{llms.TextContent{Text: responseText}},
+	})
+
+	return responseText, nil
+}
+
+// ClearHistory clears the conversation history
+//
+// Only persistent in the backend
+func (a *Agent) ClearHistory() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Keep only the system message
+	a.messages = []llms.MessageContent{
+		{
+			Role:  llms.ChatMessageTypeSystem,
+			Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(a.shell)}},
+		},
+	}
+}
+
+// getSystemPrompt returns the system prompt for the agent
+func getSystemPrompt(shell string) string {
+	shellType := strings.Split(shell, "/")[1]
+	return fmt.Sprintf(`You are operating as and within the Menace CLI. You must be safe, precise and helpful.
+	Menace-CLI is a Go-based CLI tool that uses large language models to provide intelligent terminal assistance.
+	You have access to the local file system and can execute commands in %s.
+
+	Before executing any command, explain your intent and reasoning.
+	Execute commands sequentially - one at a time.
+	After each command, you'll receive its output (especially for file operations like ls).
+
+	When you need to execute a command, format it like this:
+	`+"```"+shellType+"\n"+`your_command_here
+	`+"```\n"+`
+
+	For example, to list files:
+	`+"```"+shellType+"\n"+`ls
+	`+"```\n"+`
+
+	You should respond as if you are part of this real application, not a fictional tool.
+	`, shell)
 }
 
 // Command represents a parsed command from the LLM response
@@ -27,150 +121,4 @@ type Command struct {
 	Type    string // "shell", "file", etc.
 	Content string // the command to execute
 	Error   error
-}
-
-// parseResponse attempts to extract commands from the LLM response
-// note, currently unused...
-func (a *Agent) parseResponse(response string) ([]Command, error) {
-	commands := []Command{}
-
-	// Get shell type from the detected shell
-	// since its in the form "windows/CMD", "linux/bash", "darwin/bash" etc, we split into 2 parts
-	parts := strings.Split(a.shell, "/")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid shell format: %s", a.shell)
-	}
-	shellType := parts[1]
-
-	// Look for commands in the response
-	// same format as instructed in the system prompt
-	pattern := "```" + shellType
-	if strings.Contains(response, pattern) {
-		parts := strings.Split(response, pattern)
-		for _, part := range parts[1:] {
-			endIdx := strings.Index(part, "```")
-			if endIdx == -1 {
-				continue
-			}
-
-			cmd := strings.TrimSpace(part[:endIdx])
-			if cmd != "" {
-				commands = append(commands, Command{
-					Type:    "shell",
-					Content: cmd,
-				})
-			}
-		}
-	}
-
-	return commands, nil
-}
-
-// parseCommand extracts the command found in the LLM response
-// Returns nil if no command is found
-func ParseCommand(response string) *Command {
-	// Look for the first command block
-	pattern := "```" + shellType
-	if !strings.Contains(response, pattern) {
-		return nil
-	}
-
-	// Split on the pattern and take the first command block
-	parts := strings.Split(response, pattern)
-	if len(parts) < 2 {
-		return nil
-	}
-
-	// Find the end of the command block
-	endIdx := strings.Index(parts[1], "```")
-	if endIdx == -1 {
-		return &Command{
-			Error: fmt.Errorf("malformed command block: missing closing ```"),
-		}
-	}
-
-	// Extract and trim the command
-	cmd := strings.TrimSpace(parts[1][:endIdx])
-	if cmd == "" {
-		return nil
-	}
-
-	return &Command{
-		Type:    "shell",
-		Content: cmd,
-	}
-}
-
-// executeCommand runs a single command and returns the result
-func (a *Agent) ExecuteCommand(cmd Command) (string, error) {
-	if cmd.Type != "shell" {
-		return "", fmt.Errorf("unsupported command type: %s", cmd.Type)
-	}
-
-	// Split shell into OS and shell type
-	parts := strings.Split(a.shell, "/")
-	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid shell format: %s", a.shell)
-	}
-
-	osType, shellType := parts[0], parts[1]
-
-	var execCmd *exec.Cmd
-	if osType == "windows" {
-		if shellType == "PowerShell" {
-			execCmd = exec.Command("powershell", "-Command", cmd.Content)
-		} else {
-			// CMD
-			execCmd = exec.Command("cmd", "/C", cmd.Content)
-		}
-	} else {
-		// Unix-like systems
-		execCmd = exec.Command(shellType, "-c", cmd.Content)
-	}
-
-	// Capture both stdout and stderr
-	output, err := execCmd.CombinedOutput()
-	if err != nil {
-		return string(output), fmt.Errorf("command execution failed: %v", err)
-	}
-
-	return string(output), nil
-}
-
-// Run is the main agent loop that processes user input and executes commands
-// this main loop has multiple commands at the same time...
-func (a *Agent) Run(input string) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	// Get response from LLM
-	response, err := a.llmService.SendMessage(input)
-	if err != nil {
-		return fmt.Errorf("failed to get LLM response: %v", err)
-	}
-
-	// Parse commands from response
-	commands, err := a.parseResponse(response.Choices[0].Message.Content)
-	if err != nil {
-		return fmt.Errorf("failed to parse commands: %v", err)
-	}
-
-	// Execute each command
-	for _, cmd := range commands {
-		result, err := a.ExecuteCommand(cmd)
-		if err != nil {
-			// Log error but continue with other commands
-			fmt.Printf("Error executing command: %v\n", err)
-			continue
-		}
-
-		// Send result back to LLM for context
-		contextMsg := fmt.Sprintf("Command executed: %s\nResult: %s", cmd.Content, result)
-		_, err = a.llmService.SendMessage(contextMsg)
-		if err != nil {
-			fmt.Printf("Failed to send command result to LLM: %v\n", err)
-		}
-	}
-
-	return nil
 }

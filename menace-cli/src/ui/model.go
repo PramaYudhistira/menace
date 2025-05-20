@@ -12,16 +12,16 @@ import (
 type Model struct {
 	Input    string
 	Messages []Message
-	agent    *llmServer.Agent
-	Width    int
-	Height   int
+	//has a separate field for Messages, for context with agent
+	agent  *llmServer.Agent
+	Width  int
+	Height int
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
 	// Cursor position in input (column, row)
-	CursorX           int
-	CursorY           int
-	waitingForCommand bool
-	WindowStart       int // Global horizontal window start for all lines
+	CursorX     int
+	CursorY     int
+	WindowStart int // Global horizontal window start for all lines
 }
 
 func (m Model) Init() tea.Cmd {
@@ -99,8 +99,12 @@ func (m *Model) AddUserMessage(message string) {
 }
 
 // Adds a system message to the chat history
-func (m *Model) SystemMessage(message string) {
+func (m *Model) AddSystemMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "system", Content: message})
+}
+
+func (m *Model) AddAgentMessage(message string) {
+	m.Messages = append(m.Messages, Message{Sender: "llm", Content: message})
 }
 
 // Handle mouse scrolling
@@ -237,9 +241,8 @@ func (m *Model) HandleVerticalCursorMovement(direction string) {
 // main entry point for the UI
 func NewModel(agent *llmServer.Agent) *Model {
 	return &Model{
-		agent:   agent,
 		CursorX: 0,
 		CursorY: 0,
+		agent:   agent,
 	}
 }
-
