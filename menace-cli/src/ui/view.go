@@ -80,7 +80,7 @@ func (m Model) View() string {
 			prefix = "> "
 		case "llm":
 			styleFunc = LLMStyle.Render
-			prefix = "💭 "
+			prefix = "🤖 "
 		default:
 			//system style
 			styleFunc = SystemStyle.Render

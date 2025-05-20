@@ -11,21 +11,25 @@ import (
 )
 
 func main() {
-	// Initialize LLM service
-	llm := llmServer.GetInstance()
+	// Get API key
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		fmt.Println("Warning: OPENAI_API_KEY environment variable not set")
-	} else {
-		llm.Configure(apiKey)
+		fmt.Println("Error: OPENAI_API_KEY environment variable not set")
+		os.Exit(1)
 	}
 
-	// Initialize agent
-	agent := llmServer.NewAgent(llm)
+	// Initialize agent with langchaingo
+	agent, err := llmServer.NewAgent(apiKey)
+	if err != nil {
+		fmt.Printf("Error initializing agent: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Initialize UI with the agent
 	zone.NewGlobal()
 	p := tea.NewProgram(
-		ui.NewModel(agent),
-		tea.WithAltScreen(), // alternate screen
+		ui.NewModel(agent), // Pass the agent to the UI
+		tea.WithAltScreen(),
 		tea.WithMouseAllMotion(),
 	)
 
