@@ -31,6 +31,9 @@ type Model struct {
 	SelectionEndY   int
 	IsHighlighting  bool
 
+	// Thinking animation state
+	IsThinking   bool
+	ThinkingDots int
 }
 
 func (m Model) Init() tea.Cmd {

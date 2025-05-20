@@ -18,6 +18,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	changed := false
 
 	switch msg := msg.(type) {
+	// Handle thinking animation
+	case ThinkingMsg:
+		return m.UpdateThinking()
 
 	// Styles to fit terminal size
 	case tea.WindowSizeMsg:
@@ -64,16 +67,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Add user message to UI
 			m.AddUserMessage(m.Input)
 
-			// Send to agent and get response
-			response, err := m.agent.SendMessage(context.Background(), m.Input)
-			if err != nil {
-				m.AddSystemMessage("Error: " + err.Error())
-			} else {
-				m.AddAgentMessage(response)
-			}
+			// Start thinking animation
+			m.StartThinking()
+
+			// Capture input before clearing
+			userInput := m.Input
 
 			// Clear input
 			m.ClearState()
+
+			// Send to agent and get response in a goroutine
+			go func() {
+				response, err := m.agent.SendMessage(context.Background(), userInput)
+				if err != nil {
+					m.AddSystemMessage("Error: " + err.Error())
+				} else {
+					m.StopThinking()
+					m.AddAgentMessage(response)
+				}
+			}()
+
+			// Start thinking animation
+			return m, thinkingTick()
 
 		//Case for horizontal cursor movement
 		case tea.KeyLeft.String(), tea.KeyRight.String():
@@ -100,7 +115,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.InsertNewLine()
 			changed = true
 
-    //Case for ctrl A key press
+		//Case for ctrl A key press
 		case tea.KeyCtrlA.String():
 			m.IsHighlighting = true
 			m.SelectAll()
