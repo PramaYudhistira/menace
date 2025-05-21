@@ -17,21 +17,21 @@ type Agent struct {
 	mu       sync.Mutex
 	shell    string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
 	messages []llms.MessageContent
+	ctx      context.Context
 }
 
 // NewAgent creates a new agent instance
 func NewAgent(apiKey string) (*Agent, error) {
 
-	// Right now, o3-2025-04-16 cannot be used with the openai package...
-	// Perhaps its time for OSS contribution again?
-	// it wont work with o3-2025-04-16 since we can't set temperature to 0 because openai package is broken
 	llm, err := openai.New(
 		openai.WithToken(apiKey),
-		openai.WithModel("gpt-4.1-2025-04-14"),
+		openai.WithModel("o4-mini-2025-04-16"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI client: %v", err)
 	}
+
+	ctx := context.Background()
 
 	return &Agent{
 		llm:   llm,
@@ -42,6 +42,7 @@ func NewAgent(apiKey string) (*Agent, error) {
 				Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(ModelFactory{}.DetectShell())}},
 			},
 		},
+		ctx: ctx,
 	}, nil
 }
 
@@ -57,7 +58,7 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, error) {
 	})
 
 	// Get response from LLM
-	response, err := a.llm.GenerateContent(ctx, a.messages)
+	response, err := a.llm.GenerateContent(a.ctx, a.messages, llms.WithTemperature(1))
 	if err != nil {
 		return "", fmt.Errorf("failed to get response from LLM: %v", err)
 	}
