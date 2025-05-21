@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
@@ -77,6 +78,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlV.String():
 			clipboardContent := m.GetClipboardContent()
 			if clipboardContent != "" {
+				// Normalize clipboard content
+				clipboardContent = strings.ReplaceAll(clipboardContent, "\r\n", "\n")
+				clipboardContent = strings.ReplaceAll(clipboardContent, "\r", "\n")
+
 				// If text is selected, replace it
 				if m.IsHighlighting {
 					m.Input = ""
@@ -89,8 +94,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.SelectionEndY = 0
 				}
 				// Insert clipboard content
-				for _, char := range clipboardContent {
-					m.InsertCharacter(string(char))
+				lines := strings.Split(clipboardContent, "\n")
+				for i, line := range lines {
+					for _, char := range line {
+						m.InsertCharacter(string(char))
+					}
+					// Insert a new line if not the last line
+					if i < len(lines)-1 {
+						m.InsertNewLine()
+					}
 				}
 				changed = true
 			}
