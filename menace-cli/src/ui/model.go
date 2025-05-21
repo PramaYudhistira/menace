@@ -2,6 +2,8 @@ package ui
 
 import (
 	"menace-go/llmServer"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -157,7 +159,64 @@ func (m *Model) HandleScroll(direction int) {
 
 // Handles backspace key press
 func (m *Model) HandleBackSpace() {
-	// Delete character before cursor or merge lines
+	// If text is highlighted, delete all highlighted text
+	if m.IsHighlighting {
+		lines := strings.Split(m.Input, "\n")
+		var newLines []string
+
+		// Handle single line selection
+		if m.SelectionStartY == m.SelectionEndY {
+			line := lines[m.SelectionStartY]
+			runes := []rune(line)
+			start := m.SelectionStartX
+			end := m.SelectionEndX
+			if start > end {
+				start, end = end, start
+			}
+			if start < len(runes) {
+				if end > len(runes) {
+					end = len(runes)
+				}
+				newLine := string(runes[:start]) + string(runes[end:])
+				lines[m.SelectionStartY] = newLine
+			}
+		} else {
+			// Handle multi-line selection
+			// Keep lines before selection
+			newLines = append(newLines, lines[:m.SelectionStartY]...)
+
+			// Add first line up to selection start
+			if m.SelectionStartX < len([]rune(lines[m.SelectionStartY])) {
+				firstLine := lines[m.SelectionStartY]
+				newLines = append(newLines, string([]rune(firstLine)[:m.SelectionStartX]))
+			}
+
+			// Add last line from selection end
+			if m.SelectionEndX < len([]rune(lines[m.SelectionEndY])) {
+				lastLine := lines[m.SelectionEndY]
+				newLines = append(newLines, string([]rune(lastLine)[m.SelectionEndX:]))
+			}
+
+			// Add remaining lines after selection
+			if m.SelectionEndY+1 < len(lines) {
+				newLines = append(newLines, lines[m.SelectionEndY+1:]...)
+			}
+
+			lines = newLines
+		}
+
+		m.Input = strings.Join(lines, "\n")
+		m.CursorX = m.SelectionStartX
+		m.CursorY = m.SelectionStartY
+		m.IsHighlighting = false
+		m.SelectionStartX = 0
+		m.SelectionStartY = 0
+		m.SelectionEndX = 0
+		m.SelectionEndY = 0
+		return
+	}
+
+	// Normal backspace behavior when no text is highlighted
 	lines := strings.Split(m.Input, "\n")
 	if m.CursorX > 0 {
 		// Delete one character before cursor
@@ -269,4 +328,178 @@ func NewModel(agent *llmServer.Agent) *Model {
 		CursorY: 0,
 		agent:   agent,
 	}
+}
+
+// GetSelectedText returns the currently selected text
+func (m *Model) GetSelectedText() string {
+	if !m.IsHighlighting {
+		return ""
+	}
+
+	lines := strings.Split(m.Input, "\n")
+	var selectedText strings.Builder
+
+	// Ensure we have valid line indices
+	if m.SelectionStartY >= len(lines) || m.SelectionEndY >= len(lines) {
+		return ""
+	}
+
+	// Handle single line selection
+	if m.SelectionStartY == m.SelectionEndY {
+		line := lines[m.SelectionStartY]
+		runes := []rune(line)
+		start := m.SelectionStartX
+		end := m.SelectionEndX
+		if start > end {
+			start, end = end, start
+		}
+		if start < len(runes) {
+			if end > len(runes) {
+				end = len(runes)
+			}
+			return string(runes[start:end])
+		}
+		return ""
+	}
+
+	// Handle multi-line selection
+	for y := m.SelectionStartY; y <= m.SelectionEndY; y++ {
+		line := lines[y]
+		runes := []rune(line)
+
+		if y == m.SelectionStartY {
+			// First line: from SelectionStartX to end
+			if m.SelectionStartX < len(runes) {
+				selectedText.WriteString(string(runes[m.SelectionStartX:]))
+			}
+		} else if y == m.SelectionEndY {
+			// Last line: from start to SelectionEndX
+			if m.SelectionEndX > 0 {
+				if m.SelectionEndX > len(runes) {
+					selectedText.WriteString(string(runes))
+				} else {
+					selectedText.WriteString(string(runes[:m.SelectionEndX]))
+				}
+			}
+		} else {
+			// Middle lines: entire line
+			selectedText.WriteString(line)
+		}
+
+		if y < m.SelectionEndY {
+			selectedText.WriteString("\n")
+		}
+	}
+
+	return selectedText.String()
+}
+
+// CopyToClipboard copies the given text to the system clipboard
+func (m *Model) CopyToClipboard(text string) {
+	if text == "" {
+		return
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbcopy")
+	case "linux":
+		cmd = exec.Command("xclip", "-selection", "clipboard")
+	case "windows":
+		cmd = exec.Command("clip")
+	default:
+		return
+	}
+
+	cmd.Stdin = strings.NewReader(text)
+	if err := cmd.Run(); err != nil {
+		m.AddSystemMessage("Failed to copy to clipboard: " + err.Error())
+	}
+}
+
+// CutSelectedText copies the selected text to clipboard and deletes it
+func (m *Model) CutSelectedText() {
+	if !m.IsHighlighting {
+		return
+	}
+
+	// Copy selected text to clipboard
+	selectedText := m.GetSelectedText()
+	m.CopyToClipboard(selectedText)
+
+	// Delete the selected text
+	lines := strings.Split(m.Input, "\n")
+	var newLines []string
+
+	// Handle single line selection
+	if m.SelectionStartY == m.SelectionEndY {
+		line := lines[m.SelectionStartY]
+		runes := []rune(line)
+		start := m.SelectionStartX
+		end := m.SelectionEndX
+		if start > end {
+			start, end = end, start
+		}
+		if start < len(runes) {
+			if end > len(runes) {
+				end = len(runes)
+			}
+			newLine := string(runes[:start]) + string(runes[end:])
+			lines[m.SelectionStartY] = newLine
+		}
+	} else {
+		// Handle multi-line selection
+		// Keep lines before selection
+		newLines = append(newLines, lines[:m.SelectionStartY]...)
+
+		// Add first line up to selection start
+		if m.SelectionStartX < len([]rune(lines[m.SelectionStartY])) {
+			firstLine := lines[m.SelectionStartY]
+			newLines = append(newLines, string([]rune(firstLine)[:m.SelectionStartX]))
+		}
+
+		// Add last line from selection end
+		if m.SelectionEndX < len([]rune(lines[m.SelectionEndY])) {
+			lastLine := lines[m.SelectionEndY]
+			newLines = append(newLines, string([]rune(lastLine)[m.SelectionEndX:]))
+		}
+
+		// Add remaining lines after selection
+		if m.SelectionEndY+1 < len(lines) {
+			newLines = append(newLines, lines[m.SelectionEndY+1:]...)
+		}
+
+		lines = newLines
+	}
+
+	m.Input = strings.Join(lines, "\n")
+	m.CursorX = m.SelectionStartX
+	m.CursorY = m.SelectionStartY
+	m.IsHighlighting = false
+	m.SelectionStartX = 0
+	m.SelectionStartY = 0
+	m.SelectionEndX = 0
+	m.SelectionEndY = 0
+}
+
+// GetClipboardContent returns the content of the system clipboard
+func (m *Model) GetClipboardContent() string {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("pbpaste")
+	case "linux":
+		cmd = exec.Command("xclip", "-selection", "clipboard", "-o")
+	case "windows":
+		cmd = exec.Command("powershell", "-command", "Get-Clipboard")
+	default:
+		return ""
+	}
+
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return string(output)
 }

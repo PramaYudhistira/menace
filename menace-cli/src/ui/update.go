@@ -55,7 +55,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		//if ctrl+c is pressed, quit the program
 		case tea.KeyCtrlC.String():
+			if m.IsHighlighting {
+				selectedText := m.GetSelectedText()
+				m.CopyToClipboard(selectedText)
+				// Clear selection after copying
+				m.IsHighlighting = false
+				m.SelectionStartX = 0
+				m.SelectionStartY = 0
+				m.SelectionEndX = 0
+				m.SelectionEndY = 0
+				return m, nil
+			}
 			return m, tea.Quit
+
+		case tea.KeyCtrlX.String():
+			if m.IsHighlighting {
+				m.CutSelectedText()
+				changed = true
+			}
+
+		case tea.KeyCtrlV.String():
+			clipboardContent := m.GetClipboardContent()
+			if clipboardContent != "" {
+				// If text is selected, replace it
+				if m.IsHighlighting {
+					m.Input = ""
+					m.CursorX = 0
+					m.CursorY = 0
+					m.IsHighlighting = false
+					m.SelectionStartX = 0
+					m.SelectionStartY = 0
+					m.SelectionEndX = 0
+					m.SelectionEndY = 0
+				}
+				// Insert clipboard content
+				for _, char := range clipboardContent {
+					m.InsertCharacter(string(char))
+				}
+				changed = true
+			}
 
 		//Case for Enter key press
 		//Should send message to LLM
