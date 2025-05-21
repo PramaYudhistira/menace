@@ -16,7 +16,10 @@ func thinkingTick() tea.Cmd {
 	})
 }
 
-// StartThinking starts the thinking animation
+// StartThinking starts the thinking animation by setting the IsThinking flag to true,
+// resetting the ThinkingDots counter, and adding a "thinking" system message.
+// This function is typically used to indicate that the system is processing or waiting.
+// The "thinking" system message added by this function can be removed by calling StopThinking.
 func (m *Model) StartThinking() {
 	m.IsThinking = true
 	m.ThinkingDots = 0
