@@ -72,6 +72,8 @@ var (
 			Bold(true).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#bd93f9"))
+
+	ThinkingState = "thinking"
 )
 
 // loadingAnimation returns a command that sends loading animation frames
