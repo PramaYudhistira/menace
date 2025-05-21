@@ -19,6 +19,11 @@ type LLMResponseMsg struct {
 	Content string
 }
 
+// SystemMessage represents a system message
+type SystemMessage struct {
+	Content string
+}
+
 // Styles for Menace CLI UI
 // Includes "boxes" for chat and input area
 var (

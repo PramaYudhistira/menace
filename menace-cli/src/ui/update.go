@@ -76,19 +76,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear input
 			m.ClearState()
 
-			// Send to agent and get response in a goroutine
-			go func() {
-				response, err := m.agent.SendMessage(context.Background(), userInput)
-				if err != nil {
-					m.AddSystemMessage("Error: " + err.Error())
-				} else {
-					m.StopThinking()
-					m.AddAgentMessage(response)
-				}
-			}()
-
-			// Start thinking animation
-			return m, thinkingTick()
+			// Send to agent and get response asynchronously via Bubble Tea command
+			return m, tea.Batch(
+				func() tea.Msg {
+					response, err := m.agent.SendMessage(context.Background(), userInput)
+					if err != nil {
+						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					return LLMResponseMsg{Content: response}
+				},
+				thinkingTick(),
+			)
 
 		//Case for horizontal cursor movement
 		case tea.KeyLeft.String(), tea.KeyRight.String():
@@ -139,6 +137,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				changed = true
 			}
 		}
+
+	case LLMResponseMsg:
+		m.StopThinking()
+		m.AddAgentMessage(msg.Content)
+		return m, nil
+
+	case SystemMessage:
+		m.StopThinking()
+		m.AddSystemMessage(msg.Content)
+		return m, nil
 	}
 
 	if changed {
