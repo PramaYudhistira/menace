@@ -18,6 +18,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	changed := false
 
 	switch msg := msg.(type) {
+	// Handle thinking animation
+	case ThinkingMsg:
+		return m.UpdateThinking()
 
 	// Styles to fit terminal size
 	case tea.WindowSizeMsg:
@@ -102,16 +105,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Add user message to UI
 			m.AddUserMessage(m.Input)
 
-			// Send to agent and get response
-			response, err := m.agent.SendMessage(context.Background(), m.Input)
-			if err != nil {
-				m.AddSystemMessage("Error: " + err.Error())
-			} else {
-				m.AddAgentMessage(response)
-			}
+			// Start thinking animation
+			m.StartThinking()
+
+			// Capture input before clearing
+			userInput := m.Input
 
 			// Clear input
 			m.ClearState()
+
+			// Send to agent and get response asynchronously via Bubble Tea command
+			return m, tea.Batch(
+				func() tea.Msg {
+					response, err := m.agent.SendMessage(context.Background(), userInput)
+					if err != nil {
+						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					return LLMResponseMsg{Content: response}
+				},
+				thinkingTick(),
+			)
 
 		//Case for horizontal cursor movement
 		case tea.KeyLeft.String(), tea.KeyRight.String():
@@ -138,7 +151,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.InsertNewLine()
 			changed = true
 
-			//Case for ctrl A key press
+		//Case for ctrl A key press
 		case tea.KeyCtrlA.String():
 			m.IsHighlighting = true
 			m.SelectAll()
@@ -162,6 +175,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				changed = true
 			}
 		}
+
+	case LLMResponseMsg:
+		m.StopThinking()
+		m.AddAgentMessage(msg.Content)
+		return m, nil
+
+	case SystemMessage:
+		m.StopThinking()
+		m.AddSystemMessage(msg.Content)
+		return m, nil
 	}
 
 	if changed {

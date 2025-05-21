@@ -85,7 +85,10 @@ func (m Model) View() string {
 			//system style
 			styleFunc = SystemStyle.Render
 			prefix = "👾 "
-
+			// Add dots to thinking message
+			if msg.Content == ThinkingState && m.IsThinking {
+				msg.Content = ThinkingState + strings.Repeat(".", m.ThinkingDots)
+			}
 		}
 		// measure prefix width and prepare indent for wrapped lines
 		prefixWidth := runewidth.StringWidth(prefix)
