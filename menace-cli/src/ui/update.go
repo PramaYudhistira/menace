@@ -47,11 +47,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.AddSystemMessage("testing system message")
 					return m, nil
 				}
+				if zone.Get("config").InBounds(msg) {
+					m.OpenConfig()
+					return m, nil
+				}
 			}
 		}
 
 	// Handle key presses
 	case tea.KeyMsg:
+		
+		if m.IsConfigOpen {
+			switch msg.String() {
+			case tea.KeyEnter.String():
+				m.SelectModel()
+				changed = true
+			case tea.KeyEsc.String():
+				m.CloseConfig()
+				changed = true
+			case tea.KeyUp.String(), tea.KeyDown.String():
+				m.HandleConfigNavigation(msg.String())
+				changed = true
+			}
+			return m, nil
+		}
+		
 		switch msg.String() {
 		//if ctrl+c is pressed, quit the program
 		case tea.KeyCtrlC.String():

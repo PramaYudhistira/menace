@@ -36,6 +36,10 @@ type Model struct {
 	// Thinking animation state
 	IsThinking   bool
 	ThinkingDots int
+
+	// Config page state
+	IsConfigOpen bool
+	ConfigCursor int // Index of selected model in config
 }
 
 func (m Model) Init() tea.Cmd {
@@ -503,3 +507,5 @@ func (m *Model) GetClipboardContent() string {
 	}
 	return string(output)
 }
+
+// configuring mdodel

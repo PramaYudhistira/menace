@@ -44,6 +44,7 @@ func (m Model) View() string {
 		Bold(true).MarginBottom(1)
 	osShellInfo := InfoStyle.Render("💻 " + mf.DetectShell())
 	helpButton := zone.Mark("help", ButtonStyle.Render("help"))
+	configButton := zone.Mark("config", ButtonStyle.Render("config"))
 	// Use helpButton in your sidebar string
 
 	var SectionHeaderStyle = lipgloss.NewStyle().
@@ -54,7 +55,12 @@ func (m Model) View() string {
 		"\n  " + osShellInfo +
 		"\n" + SectionHeaderStyle.Render("Working Directory:") +
 		"\n" + formattedDir +
-		"\n" + helpButton
+		"\n" + helpButton + "\n" + configButton
+
+	// If config is open, show config page
+	if m.IsConfigOpen {
+		return m.ConfigView(termHeight, termWidth)
+	}
 
 	sidebar = lipgloss.NewStyle().
 		Align(lipgloss.Left, lipgloss.Top).
