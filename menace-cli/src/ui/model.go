@@ -22,10 +22,9 @@ type Model struct {
 	Scroll int
 	// Cursor position in input (column, row)
 
-	CursorX           int
-	CursorY           int
-	waitingForCommand bool
-	WindowStart       int // Global horizontal window start for all lines
+	CursorX     int
+	CursorY     int
+	WindowStart int // Global horizontal window start for all lines
 
 	SelectionStartX int
 	SelectionStartY int
@@ -40,6 +39,10 @@ type Model struct {
 	// Config page state
 	IsConfigOpen bool
 	ConfigCursor int // Index of selected model in config
+
+	// Pending command state
+	PendingCommand          *CommandSuggestionMsg
+	AwaitingCommandApproval bool
 }
 
 func (m Model) Init() tea.Cmd {
@@ -116,7 +119,7 @@ func (m *Model) AddUserMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "user", Content: message})
 }
 
-// Adds a system message to the chat history
+// Adds a system message to the model chat history
 func (m *Model) AddSystemMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "system", Content: message})
 }
@@ -507,5 +510,3 @@ func (m *Model) GetClipboardContent() string {
 	}
 	return string(output)
 }
-
-// configuring mdodel

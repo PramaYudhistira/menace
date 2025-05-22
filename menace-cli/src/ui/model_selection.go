@@ -9,8 +9,9 @@ import (
 )
 
 var AvailableModels = []string{
-	"ChatGPT 4.1",
-	"ChatGPT 3.5",
+	"GPT 4.1",
+	"GPT 3.5",
+	"o4-mini",
 	"Claude",
 }
 
