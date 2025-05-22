@@ -81,7 +81,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.AwaitingCommandApproval = false
 				output, err := runShellCommand(m.PendingCommand.Command)
 				if err != nil {
-					//perhaps also send this to LLM for "self improvement"
+					// TODO: Consider implementing functionality to send error details to the LLM for self-improvement.
 					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
 				}
 				cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
