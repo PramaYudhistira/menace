@@ -1,11 +1,6 @@
 package ui
 
 import (
-	"menace-go/llmServer"
-	"strings"
-	"time"
-
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -17,6 +12,12 @@ type LoadingMsg struct {
 // LLMResponseMsg represents a message from the LLM
 type LLMResponseMsg struct {
 	Content string
+}
+
+// Represents a command suggestion if the LLM returns one.
+type CommandSuggestionMsg struct {
+	Command string
+	Reason  string
 }
 
 // SystemMessage represents a system-level message, typically used for conveying
@@ -63,7 +64,6 @@ var (
 			Bold(true)
 	// Style for the block cursor in the input
 	CursorStyle = lipgloss.NewStyle().Reverse(true)
-	shellType   = strings.Split(llmServer.ModelFactory{}.DetectShell(), "/")[1]
 
 	ButtonStyle = lipgloss.NewStyle().
 			Padding(0, 2).
@@ -75,10 +75,3 @@ var (
 
 	ThinkingState = "thinking"
 )
-
-// loadingAnimation returns a command that sends loading animation frames
-func loadingAnimation() tea.Cmd {
-	return tea.Tick(time.Millisecond*300, func(t time.Time) tea.Msg {
-		return LoadingMsg{Frame: int((t.UnixNano() / int64(time.Millisecond*300)) % 4)}
-	})
-}

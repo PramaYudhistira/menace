@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,7 +58,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Handle key presses
 	case tea.KeyMsg:
-		
+
 		if m.IsConfigOpen {
 			switch msg.String() {
 			case tea.KeyEnter.String():
@@ -72,7 +73,69 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		
+
+		if m.AwaitingCommandApproval {
+			switch msg.String() {
+			case "y":
+				// Execute the command
+				m.AwaitingCommandApproval = false
+				output, err := runShellCommand(m.PendingCommand.Command)
+				if err != nil {
+					//perhaps also send this to LLM for "self improvement"
+					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+				}
+				cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
+				cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
+				cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ") // replace tabs with spaces
+				m.AddSystemMessage(fmt.Sprintf("Command output:\n%s", cleanOutput))
+				m.StartThinking()
+				return m, tea.Batch(
+					func() tea.Msg {
+						// truncate output?
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output)
+						if err != nil {
+							return SystemMessage{Content: "Error: " + err.Error()}
+						}
+						if cmdSuggestion != nil {
+							return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						}
+						return LLMResponseMsg{Content: response}
+					},
+					thinkingTick(),
+				)
+
+			case "n":
+				// Cancel
+				m.AwaitingCommandApproval = false
+				m.PendingCommand = nil
+				m.AddAgentMessage("Command Cancelled.")
+				m.StartThinking()
+				return m, tea.Batch(
+					func() tea.Msg {
+
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), "No, stop for now.")
+						if err != nil {
+							return SystemMessage{Content: "Error: " + err.Error()}
+						}
+						if cmdSuggestion != nil {
+							// Try not to get to this case...
+							return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						}
+						return LLMResponseMsg{Content: response}
+					},
+					thinkingTick(),
+				)
+			case "e":
+				// Switch to edit mode (maybe put command in input box)
+				m.Input = m.PendingCommand.Command
+				m.AwaitingCommandApproval = false
+				m.PendingCommand = nil
+
+				return m, nil
+			}
+			return m, nil
+		}
+
 		switch msg.String() {
 		//if ctrl+c is pressed, quit the program
 		case tea.KeyCtrlC.String():
@@ -149,9 +212,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Send to agent and get response asynchronously via Bubble Tea command
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, err := m.agent.SendMessage(context.Background(), userInput)
+					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					if cmdSuggestion != nil {
+						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
 					}
 					return LLMResponseMsg{Content: response}
 				},
@@ -207,6 +273,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				changed = true
 			}
 		}
+
+	case CommandSuggestionMsg:
+		m.PendingCommand = &msg
+		m.AwaitingCommandApproval = true
+		m.StopThinking()
+		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
+		//TODO: Better UX please
+		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
+		return m, nil
 
 	case LLMResponseMsg:
 		m.StopThinking()
