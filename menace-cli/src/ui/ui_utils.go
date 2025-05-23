@@ -66,8 +66,10 @@ var (
 	CursorStyle = lipgloss.NewStyle().Reverse(true)
 
 	ButtonStyle = lipgloss.NewStyle().
-			Padding(0, 2).
-			Margin(0, 1).
+			Width(12). // fixed width for both buttons
+			Align(lipgloss.Center).
+			Padding(0, 0).
+			Margin(0, 0).
 			Foreground(lipgloss.Color("#f8f8f2")).
 			Bold(true).
 			Border(lipgloss.RoundedBorder()).
