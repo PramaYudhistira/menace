@@ -39,34 +39,31 @@ func (m Model) View() string {
 		}
 	}
 
-	var InfoStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#8be9fd")).
-		Bold(true).MarginBottom(1)
-	osShellInfo := InfoStyle.Render("💻 " + mf.DetectShell())
-	helpButton := zone.Mark("help", ButtonStyle.Render("help"))
-	configButton := zone.Mark("config", ButtonStyle.Render("config"))
+	// OS icon and label
+	osIcon := getOSIcon()
+	osName := getOSName()
+	osRow := InfoStyle.Render(osIcon + "  " + osName)
+
+	shellIcon := "\uF120"
+	shellName := mf.DetectShell()
+	shellRow := InfoStyle.Render(shellIcon + "  " + strings.Split(shellName, "/")[1])
+
+	helpButton := zone.Mark("help", ButtonStyle.Render("Help"))
+	configButton := zone.Mark("config", ButtonStyle.Render("Config"))
 	// Use helpButton in your sidebar string
 
-	var SectionHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#bd93f9"))
 	sidebar := HeaderStyle.Render("Menace CLI") +
-		"\n" + SectionHeaderStyle.MarginBottom(1).Render("Running on:") +
-		"\n  " + osShellInfo +
-		"\n" + SectionHeaderStyle.Render("Working Directory:") +
+		"\n\n" + osRow +
+		"\n\n" + shellRow +
+		"\n\n" + SectionHeaderStyle.Render("Working Directory:") +
 		"\n" + formattedDir +
-		"\n" + helpButton + "\n" + configButton
+		"\n" + configButton +
+		"\n" + helpButton
 
 	// If config is open, show config page
 	if m.IsConfigOpen {
 		return m.ConfigView(termHeight, termWidth)
 	}
-
-	sidebar = lipgloss.NewStyle().
-		Align(lipgloss.Left, lipgloss.Top).
-		Width(18).              // match updated sidebar width
-		Height(termHeight - 2). // Adjust for top/bottom margins
-		Render(sidebar)
 
 	// Render messages line by line with wrapping, applying scroll offset
 	var renderedLines []string
@@ -140,8 +137,9 @@ func (m Model) View() string {
 	}
 	chatBody := lipgloss.JoinVertical(lipgloss.Top, linesToRender...)
 	chatBox := ChatStyle.
-		Width(termWidth - 24).  // Adjust width to fit next to the sidebar
-		Height(termHeight - 5). // Leave space for input box
+		Width(termWidth - 34). // subtract sidebar width + margin
+		MarginLeft(4).         // add a 4-column gap between sidebar and chat
+		Height(termHeight - 5).
 		Render(chatBody)
 
 	// Render input area with block cursor and proper wrapping/indent
@@ -223,10 +221,10 @@ func (m Model) View() string {
 		}
 		rendered = append(rendered, curPfx+string(visible))
 	}
+
 	inputContent := strings.Join(rendered, "\n")
 	inputPrompt := InputStyle.
-		Border(lipgloss.RoundedBorder()).
-		Width(boxW).
+		Width(termWidth - 34).
 		Render(inputContent)
 
 	// Combine chat and input
@@ -237,6 +235,6 @@ func (m Model) View() string {
 
 	// Add horizontal margins; place UI flush to top so chat-box top border is visible
 	return zone.Scan(lipgloss.NewStyle().
-		Margin(0, 2). // top/bottom, left/right
+		Margin(0, 2).
 		Render(screen))
 }

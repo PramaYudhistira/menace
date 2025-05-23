@@ -32,23 +32,27 @@ type SystemMessage struct {
 // Includes "boxes" for chat and input area
 var (
 	SidebarStyle = lipgloss.NewStyle().
-			Width(20).
+			Width(28).
 			PaddingRight(1).
-			Foreground(lipgloss.Color("15"))
+			Foreground(lipgloss.Color("15")).
+			Background(lipgloss.Color("#1C1F26"))
 
 	HeaderStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("10")).
-			MarginBottom(1)
+			MarginTop(1)
 
 	ChatStyle = lipgloss.NewStyle().
 			Padding(1).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("12"))
+			BorderForeground(lipgloss.Color("#bd93f9"))
 
 	InputStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("6")).
-			Bold(true)
+			Bold(true).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("12")).
+			MarginLeft(4)
 
 	UserStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("2")).
@@ -66,12 +70,22 @@ var (
 	CursorStyle = lipgloss.NewStyle().Reverse(true)
 
 	ButtonStyle = lipgloss.NewStyle().
-			Padding(0, 2).
-			Margin(0, 1).
+			Width(16). // fixed width for both buttons
+			Align(lipgloss.Center).
+			Padding(0, 0).
+			Margin(0, 0).
 			Foreground(lipgloss.Color("#f8f8f2")).
 			Bold(true).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color("#bd93f9"))
 
 	ThinkingState = "thinking"
+
+	InfoStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#8be9fd")).
+			Bold(true)
+
+	SectionHeaderStyle = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color("#bd93f9"))
 )

@@ -509,4 +509,31 @@ func (m *Model) GetClipboardContent() string {
 		return ""
 	}
 	return string(output)
+
+}
+func getOSIcon() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "" // Apple logo (may not render in all terminals)
+	case "windows":
+		return "🪟"
+	case "linux":
+		return "🐧"
+	default:
+		return "💻"
+	}
+}
+
+// getOSName returns a user-friendly OS name
+func getOSName() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macOS"
+	case "windows":
+		return "Windows"
+	case "linux":
+		return "Linux"
+	default:
+		return "Unknown OS"
+	}
 }
