@@ -83,7 +83,32 @@ func (m *Model) SelectModel() {
 	}
 
 	selectedModel := AvailableModels[m.ConfigCursor]
-	// TODO: Implement model switching logic
-	m.AddSystemMessage("Selected model: " + selectedModel)
+
+	// Map display names to actual model IDs
+	modelMapping := map[string]string{
+		"GPT 4.1": "gpt-4-0125-preview",
+		"GPT 3.5": "gpt-3.5-turbo",
+		"o4-mini": "o4-mini-2025-04-16",
+		"Claude":  "claude-3-opus-20240229",
+	}
+
+	// Get the actual model ID
+	modelID, exists := modelMapping[selectedModel]
+	if !exists {
+		m.AddSystemMessage("Error: Invalid model selected")
+		m.CloseConfig()
+		return
+	}
+
+	// Update the agent's model
+	err := m.agent.SetModel(modelID)
+	if err != nil {
+		m.AddSystemMessage("Error switching model: " + err.Error())
+		m.CloseConfig()
+		return
+	}
+
+	m.CurrentModel = selectedModel
+	m.AddSystemMessage("Switched to model: " + selectedModel)
 	m.CloseConfig()
 }

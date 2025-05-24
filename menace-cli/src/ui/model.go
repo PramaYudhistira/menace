@@ -43,6 +43,9 @@ type Model struct {
 	// Pending command state
 	PendingCommand          *CommandSuggestionMsg
 	AwaitingCommandApproval bool
+
+	// Add a field to track the current model
+	CurrentModel string // Display name of the currently selected model
 }
 
 func (m Model) Init() tea.Cmd {
@@ -331,9 +334,10 @@ func (m *Model) SelectAll() {
 // main entry point for the UI
 func NewModel(agent *llmServer.Agent) *Model {
 	return &Model{
-		CursorX: 0,
-		CursorY: 0,
-		agent:   agent,
+		CursorX:      0,
+		CursorY:      0,
+		agent:        agent,
+		CurrentModel: "chatgpt-4o",
 	}
 }
 

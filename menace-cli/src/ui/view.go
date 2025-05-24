@@ -47,12 +47,16 @@ func (m Model) View() string {
 	configButton := zone.Mark("config", ButtonStyle.Render("config"))
 	// Use helpButton in your sidebar string
 
+	// Add current model info to sidebar
+	currentModelInfo := InfoStyle.Render("🤖" + m.CurrentModel)
+
 	var SectionHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("#bd93f9"))
 	sidebar := HeaderStyle.Render("Menace CLI") +
 		"\n" + SectionHeaderStyle.MarginBottom(1).Render("Running on:") +
 		"\n  " + osShellInfo +
+		"\n" + currentModelInfo +
 		"\n" + SectionHeaderStyle.Render("Working Directory:") +
 		"\n" + formattedDir +
 		"\n" + helpButton + "\n" + configButton

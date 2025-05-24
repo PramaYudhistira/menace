@@ -28,7 +28,7 @@ func NewAgent(apiKey string) (*Agent, error) {
 
 	llm, err := openai.New(
 		openai.WithToken(apiKey),
-		openai.WithModel("o4-mini-2025-04-16"),
+		openai.WithModel("chatgpt-4o-latest"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI client: %v", err)
@@ -71,7 +71,6 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get response from LLM: %v", err)
 	}
-
 	// Extract the response text
 	var responseText string
 	if len(response.Choices) > 0 {
@@ -104,6 +103,24 @@ func (a *Agent) ClearHistory() {
 			Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(a.shell)}},
 		},
 	}
+}
+
+// function to set the model
+func (a *Agent) SetModel(model string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Create a new LLM instance with the selected model
+	llm, err := openai.New(
+		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+		openai.WithModel(model),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create OpenAI client with model %s: %v", model, err)
+	}
+
+	a.llm = llm
+	return nil
 }
 
 // Returns: System prompt
