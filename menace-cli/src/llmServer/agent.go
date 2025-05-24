@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/anthropic"
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
@@ -19,6 +20,8 @@ type Agent struct {
 	shell    string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
 	messages []llms.MessageContent
 	ctx      context.Context
+	provider string
+	Model    string
 }
 
 // NewAgent creates a new agent instance
@@ -37,8 +40,10 @@ func NewAgent(apiKey string) (*Agent, error) {
 	ctx := context.Background()
 
 	return &Agent{
-		llm:   llm,
-		shell: ModelFactory{}.DetectShell(),
+		llm:      llm,
+		shell:    ModelFactory{}.DetectShell(),
+		Model:    "o4-mini-2025-04-16",
+		provider: "openai",
 		messages: []llms.MessageContent{
 			{
 				Role:  llms.ChatMessageTypeSystem,
@@ -71,7 +76,6 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get response from LLM: %v", err)
 	}
-
 	// Extract the response text
 	var responseText string
 	if len(response.Choices) > 0 {
@@ -103,6 +107,39 @@ func (a *Agent) ClearHistory() {
 			Role:  llms.ChatMessageTypeSystem,
 			Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(a.shell)}},
 		},
+	}
+}
+
+func (a *Agent) SetModel(provider string, model string) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	a.provider = provider
+	a.Model = model
+
+	switch provider {
+	case "anthropic":
+		llm, err := anthropic.New(
+			anthropic.WithToken(os.Getenv("ANTHROPIC_API_KEY")),
+			anthropic.WithModel(model),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Anthropic client with model %s: %v", model, err)
+		}
+		a.llm = llm
+		return nil
+	case "openai":
+		llm, err := openai.New(
+			openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+			openai.WithModel(model),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create OpenAI client with model %s: %v", model, err)
+		}
+		a.llm = llm
+		return nil
+	default:
+		return fmt.Errorf("unknown provider: %s", provider)
 	}
 }
 
