@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/anthropic"
 	"github.com/tmc/langchaingo/llms/openai"
 )
 
@@ -19,17 +20,19 @@ type Agent struct {
 	shell    string // typically in the form "windows/CMD", "linux/bash", "darwin/bash" etc
 	messages []llms.MessageContent
 	ctx      context.Context
+	provider string // "openai" or "anthropic"
+	model    string // model id
 }
 
 // NewAgent creates a new agent instance
 //
 // Returns: Agent, error
-func NewAgent(apiKey string) (*Agent, error) {
-
+func NewAgent(provider string, apiKey string) (*Agent, error) {
 	llm, err := openai.New(
 		openai.WithToken(apiKey),
 		openai.WithModel("chatgpt-4o-latest"),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI client: %v", err)
 	}
@@ -58,34 +61,68 @@ func NewAgent(apiKey string) (*Agent, error) {
 // Returns: response, commandSuggestion, error
 func (a *Agent) SendMessage(ctx context.Context, input string) (string, *CommandSuggestion, error) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
+	provider := a.provider
+	model := a.model
+	a.mu.Unlock()
 
+	if provider == "anthropic" {
+		// Anthropic expects a different prompt format
+		apiKey := os.Getenv("ANTHROPIC_API_KEY")
+		if apiKey == "" {
+			return "", nil, fmt.Errorf("ANTHROPIC_API_KEY not set")
+		}
+		client, err := anthropic.New(
+			anthropic.WithToken(apiKey),
+			anthropic.WithModel(model),
+		)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to create Anthropic client: %v", err)
+		}
+		response, err := client.GenerateContent(ctx, []llms.MessageContent{{
+			Role:  llms.ChatMessageTypeHuman,
+			Parts: []llms.ContentPart{llms.TextContent{Text: input}},
+		}}, llms.WithTemperature(1))
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to get response from Anthropic: %v", err)
+		}
+		var responseText string
+		if len(response.Choices) > 0 {
+			responseText = response.Choices[0].Content
+		}
+		cmdSuggestion := parseCommandSuggestion(responseText)
+		// Add assistant's response to history
+		a.mu.Lock()
+		a.messages = append(a.messages, llms.MessageContent{
+			Role:  llms.ChatMessageTypeAI,
+			Parts: []llms.ContentPart{llms.TextContent{Text: responseText}},
+		})
+		a.mu.Unlock()
+		return responseText, cmdSuggestion, nil
+	}
+
+	// Default: OpenAI
+	a.mu.Lock()
 	// Add user message to history
 	a.messages = append(a.messages, llms.MessageContent{
 		Role:  llms.ChatMessageTypeHuman,
 		Parts: []llms.ContentPart{llms.TextContent{Text: input}},
 	})
-
-	// Get response from LLM
 	response, err := a.llm.GenerateContent(a.ctx, a.messages, llms.WithTemperature(1))
 	if err != nil {
+		a.mu.Unlock()
 		return "", nil, fmt.Errorf("failed to get response from LLM: %v", err)
 	}
-	// Extract the response text
 	var responseText string
 	if len(response.Choices) > 0 {
 		responseText = response.Choices[0].Content
 	}
-
-	// Parse for command suggestion
 	cmdSuggestion := parseCommandSuggestion(responseText)
-
 	// Add assistant's response to history
 	a.messages = append(a.messages, llms.MessageContent{
 		Role:  llms.ChatMessageTypeAI,
 		Parts: []llms.ContentPart{llms.TextContent{Text: responseText}},
 	})
-
+	a.mu.Unlock()
 	return responseText, cmdSuggestion, nil
 }
 
@@ -106,22 +143,40 @@ func (a *Agent) ClearHistory() {
 }
 
 // function to set the model
-func (a *Agent) SetModel(model string) error {
+func (a *Agent) SetModel(provider string, model string) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	// Create a new LLM instance with the selected model
-	llm, err := openai.New(
-		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
-		openai.WithModel(model),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to create OpenAI client with model %s: %v", model, err)
-	}
+	a.provider = provider
+	a.model = model
 
-	a.llm = llm
-	return nil
+	switch provider {
+	case "anthropic":
+		llm, err := anthropic.New(
+			anthropic.WithToken(os.Getenv("ANTHROPIC_API_KEY")),
+			anthropic.WithModel(model),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Anthropic client with model %s: %v", model, err)
+		}
+		a.llm = llm
+		return nil
+	case "openai":
+		llm, err := openai.New(
+			openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+			openai.WithModel(model),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create OpenAI client with model %s: %v", model, err)
+		}
+		a.llm = llm
+		return nil
+	default:
+		return fmt.Errorf("unknown provider: %s", provider)
+	}
 }
+
+// Create a new LLM instance with the selected model
 
 // Returns: System prompt
 func getSystemPrompt(shell string) string {

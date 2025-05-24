@@ -8,6 +8,18 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 )
 
+type ModelInfo struct {
+	Provider string
+	ID       string
+}
+
+var ModelMapping = map[string]ModelInfo{
+	"GPT 4.1": {Provider: "openai", ID: "gpt-4-0125-preview"},
+	"GPT 3.5": {Provider: "openai", ID: "gpt-3.5-turbo"},
+	"o4-mini": {Provider: "openai", ID: "o4-mini-2025-04-16"},
+	"Claude":  {Provider: "anthropic", ID: "claude-3-opus-20240229"},
+}
+
 var AvailableModels = []string{
 	"GPT 4.1",
 	"GPT 3.5",
@@ -84,16 +96,7 @@ func (m *Model) SelectModel() {
 
 	selectedModel := AvailableModels[m.ConfigCursor]
 
-	// Map display names to actual model IDs
-	modelMapping := map[string]string{
-		"GPT 4.1": "gpt-4-0125-preview",
-		"GPT 3.5": "gpt-3.5-turbo",
-		"o4-mini": "o4-mini-2025-04-16",
-		"Claude":  "claude-3-opus-20240229",
-	}
-
-	// Get the actual model ID
-	modelID, exists := modelMapping[selectedModel]
+	modelInfo, exists := ModelMapping[selectedModel]
 	if !exists {
 		m.AddSystemMessage("Error: Invalid model selected")
 		m.CloseConfig()
@@ -101,7 +104,7 @@ func (m *Model) SelectModel() {
 	}
 
 	// Update the agent's model
-	err := m.agent.SetModel(modelID)
+	err := m.agent.SetModel(modelInfo.Provider, modelInfo.ID)
 	if err != nil {
 		m.AddSystemMessage("Error switching model: " + err.Error())
 		m.CloseConfig()

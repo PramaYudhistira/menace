@@ -19,7 +19,7 @@ func main() {
 	}
 
 	// Initialize agent with langchaingo
-	agent, err := llmServer.NewAgent(apiKey)
+	agent, err := llmServer.NewAgent("openai", apiKey)
 	if err != nil {
 		fmt.Printf("Error initializing agent: %v\n", err)
 		os.Exit(1)
