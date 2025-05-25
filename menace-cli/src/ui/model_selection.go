@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -69,6 +70,7 @@ func (m *Model) OpenConfig() {
 func (m *Model) CloseConfig() {
 	m.IsConfigOpen = false
 	m.ConfigCursor = 0
+	fmt.Println(m.agent.Model)
 }
 
 // HandleConfigNavigation handles up/down navigation in config page
