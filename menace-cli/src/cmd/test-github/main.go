@@ -17,6 +17,15 @@ type PullRequest struct {
 	Base  string `json:"base"`
 }
 
+func hasChanges() (bool, error) {
+	cmd := exec.Command("git", "status", "--porcelain")
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("failed to check git status: %v", err)
+	}
+	return len(output) > 0, nil
+}
+
 func createPullRequest(branchName string) error {
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
@@ -100,18 +109,28 @@ func pushToGitHub() error {
 	branchName := strings.TrimSpace(string(branch))
 	fmt.Printf("Current branch: %s\n", branchName)
 
-	// Add all changes
-	fmt.Println("Adding changes...")
-	cmd = exec.Command("git", "add", ".")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to add changes: %v", err)
+	// Check if there are any changes
+	hasChanges, err := hasChanges()
+	if err != nil {
+		return fmt.Errorf("failed to check for changes: %v", err)
 	}
 
-	// Commit changes
-	fmt.Println("Committing changes...")
-	cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to commit changes: %v", err)
+	if !hasChanges {
+		fmt.Println("No changes to commit. Creating PR with existing commits...")
+	} else {
+		// Add all changes
+		fmt.Println("Adding changes...")
+		cmd = exec.Command("git", "add", ".")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to add changes: %v", err)
+		}
+
+		// Commit changes
+		fmt.Println("Committing changes...")
+		cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to commit changes: %v", err)
+		}
 	}
 
 	// Push to GitHub
