@@ -1,19 +1,97 @@
-# MENACE
+# Menace CLI
 
-* THE terminal LLM tool for all your needs
+Menace CLI is a cross-platform, terminal-based intelligent assistant built with Go and Node.js.  It uses OpenAI’s API under the hood and provides an interactive TUI (text user interface) powered by [Bubble Tea](https://github.com/charmbracelet/bubbletea). Menace can suggest shell commands, help navigate code, and generally make your terminal sessions more productive.
 
-## Run instructions
+## Features
 
-* Currently planning  on adding this to the npm registry
+- Cross-platform binaries for Windows, macOS (Intel & Apple Silicon), and Linux
+- Interactive TUI with mouse support
+- Context-aware LLM agent backed by OpenAI
+- Easy install/build via npm scripts or manual Go build
+- Lightweight Node wrapper (`menace`) that spawns the correct Go binary
 
-### For local download:
+## Prerequisites
 
-* cd into the `menace-cli` directory
-* `npm run build` - to build into the `bin` directory
-* `npm i -g .` - installs package globally
-* `menace` - run in any directory, and you can interact with the AI agent
+- Go (1.18+ recommended)
+- Node.js (v14+) and npm
 
+## Installation
 
-## Codebase Explanation
+### 1 From npm (recommended and coming soon!)
 
-* Note that since Bubble Tea and Lipgloss are such obscure TUI frameworks, I am possibly placing excessive comments on my code
+```bash
+npm install --global menace-cli
+```
+
+### 2 From source
+
+1. Clone this repo:
+   ```bash
+   git clone https://github.com/your-org/menace-cli.git
+   cd menace-cli
+   ```
+2. Set your OpenAI API key:
+   ```bash
+   export OPENAI_API_KEY="your_key_here"
+   ```
+3. Build all the platform binaries (into `./bin`):
+   ```bash
+   npm run build
+   ```
+4. Link the CLI locally:
+   ```bash
+   npm link
+   ```
+
+## Usage
+
+After installation and setting `OPENAI_API_KEY`, simply run:
+
+```bash
+menace
+```
+
+## Development
+
+### Directory Layout
+
+```
+.
+├── bin/                   # Compiled Go binaries per platform
+├── package.json           # NPM metadata + build scripts
+├── scripts/               # Build scripts (build-all, build-windows, build-mac)
+└── src/
+    ├── main.go            # TUI bootstrap + OpenAI agent init
+    ├── llmServer/         # LLM agent factory & prompt management
+    └── ui/                # Bubble Tea models & views
+```
+
+## Build Scripts
+
+- `npm run build`  Builds Go binaries for all supported OS/architectures into `./bin`.
+- `npm run build-windows`  Builds only the Windows executable.
+- `npm run build-mac`  Builds only the macOS executables (Intel & ARM).
+
+## Configuration
+
+Menace uses your OpenAI API key; set it in the environment:
+```bash
+export OPENAI_API_KEY="sk-…"
+```
+
+On Windows PowerShell:
+```powershell
+setx OPENAI_API_KEY "sk-…"
+```
+
+## Contributing
+
+1. Fork the repo
+2. Create your feature branch (`git checkout -b feat/...`)
+3. Commit your changes
+4. Run tests / build
+5. Open a pull request
+
+## License
+
+MIT License

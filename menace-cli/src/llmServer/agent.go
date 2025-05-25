@@ -78,6 +78,7 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	}
 
 	// Parse for command suggestion
+	//integrate this with code execution
 	cmdSuggestion := parseCommandSuggestion(responseText)
 
 	// Add assistant's response to history
