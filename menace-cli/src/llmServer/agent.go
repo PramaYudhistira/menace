@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-
 	"sync"
 
 	"github.com/tmc/langchaingo/llms"
@@ -23,7 +22,6 @@ type Agent struct {
 	ctx      context.Context
 	provider string
 	Model    string
-	gitPath  string // path to the git repository
 }
 
 // NewAgent creates a new agent instance
