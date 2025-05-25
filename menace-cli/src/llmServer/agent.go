@@ -3,7 +3,6 @@ package llmServer
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/tmc/langchaingo/llms"
@@ -108,7 +107,7 @@ func (a *Agent) ClearHistory() {
 			Parts: []llms.ContentPart{llms.TextContent{Text: getSystemPrompt(a.shell)}},
 		},
 	}
-}
+
 
 func (a *Agent) SetModel(provider string, model string) error {
 	a.mu.Lock()
@@ -200,3 +199,4 @@ func getSystemPrompt(shell string) string {
 	You should respond as if you are part of this real application, not a fictional tool.
 	`, shell, shell, cwd)
 }
+
