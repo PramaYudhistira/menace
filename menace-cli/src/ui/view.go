@@ -53,6 +53,8 @@ func (m Model) View() string {
 	sidebar := HeaderStyle.Render("Menace CLI") +
 		"\n" + SectionHeaderStyle.MarginBottom(1).Render("Running on:") +
 		"\n  " + osShellInfo +
+		"\n" + SectionHeaderStyle.Render("Model:") +
+		"\n  " + m.agent.Model +
 		"\n" + SectionHeaderStyle.Render("Working Directory:") +
 		"\n" + formattedDir +
 		"\n" + helpButton + "\n" + configButton
