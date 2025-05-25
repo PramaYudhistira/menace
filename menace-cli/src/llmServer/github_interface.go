@@ -1,4 +1,4 @@
-package main
+package llmServer
 
 import (
 	"bytes"
@@ -94,7 +94,7 @@ func createPullRequest(branchName string) error {
 }
 
 func pushToGitHub() error {
-	// Check if we're in a git repository
+	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("not in a git repository: %v", err)
@@ -116,10 +116,10 @@ func pushToGitHub() error {
 	}
 
 	if !hasChanges {
-		fmt.Println("No changes to commit. Creating PR with existing commits...")
+		fmt.Println("No changes to commit. Proceeding with push...")
+		return nil
 	} else {
 		// Add all changes
-		fmt.Println("Adding changes...")
 		cmd = exec.Command("git", "add", ".")
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to add changes: %v", err)
@@ -131,6 +131,7 @@ func pushToGitHub() error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to commit changes: %v", err)
 		}
+		fmt.Println("Changes added to commit")
 	}
 
 	// Push to GitHub
@@ -140,20 +141,17 @@ func pushToGitHub() error {
 		return fmt.Errorf("failed to push to GitHub: %v", err)
 	}
 
-	// Create pull request
-	if err := createPullRequest(branchName); err != nil {
-		return fmt.Errorf("failed to create pull request: %v", err)
+	// Only create pull request if not on main branch
+	if branchName != "main" {
+		fmt.Println("Creating pull request...")
+		if err := createPullRequest(branchName); err != nil {
+			return fmt.Errorf("failed to create pull request: %v", err)
+		}
+	} else {
+		fmt.Println("On main branch - skipping pull request creation")
 	}
 
 	return nil
 }
 
-func main() {
-	fmt.Println("Attempting to push to GitHub and create PR...")
-	err := pushToGitHub()
-	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Println("Successfully pushed to GitHub and created PR!")
-}
+
