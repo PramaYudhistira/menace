@@ -1,6 +1,9 @@
 package ui
 
 import (
+	"encoding/json"
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -18,6 +21,13 @@ type LLMResponseMsg struct {
 type CommandSuggestionMsg struct {
 	Command string
 	Reason  string
+}
+
+// Represents a function call suggestion if the LLM returns one.
+type FunctionCallMsg struct {
+	Name   string
+	Reason string
+	Args   map[string]interface{}
 }
 
 // SystemMessage represents a system-level message, typically used for conveying
@@ -77,3 +87,45 @@ var (
 
 	ThinkingState = "thinking"
 )
+
+// parseFunctionCall parses a [FUNCTION_CALL] block from the LLM response and returns a FunctionCallMsg.
+// Returns nil if no function call is found or parsing fails.
+func parseFunctionCall(response string) *FunctionCallMsg {
+	start := strings.Index(response, "[FUNCTION_CALL]")
+	end := strings.Index(response, "[/FUNCTION_CALL]")
+	if start == -1 || end == -1 {
+		return nil
+	}
+	content := response[start:end]
+
+	reasonStart := strings.Index(content, "Reason:")
+	payloadStart := strings.Index(content, "Payload:")
+	if reasonStart == -1 || payloadStart == -1 {
+		return nil
+	}
+
+	reason := strings.TrimSpace(content[reasonStart+len("Reason:") : payloadStart])
+	payload := strings.TrimSpace(content[payloadStart+len("Payload:"):])
+
+	// Find the JSON object in the payload
+	jsonStart := strings.Index(payload, "{")
+	jsonEnd := strings.LastIndex(payload, "}")
+	if jsonStart == -1 || jsonEnd == -1 || jsonEnd <= jsonStart {
+		return nil
+	}
+	jsonStr := payload[jsonStart : jsonEnd+1]
+
+	var parsed struct {
+		Name string                 `json:"name"`
+		Args map[string]interface{} `json:"args"`
+	}
+	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
+		return nil
+	}
+
+	return &FunctionCallMsg{
+		Name:   parsed.Name,
+		Reason: reason,
+		Args:   parsed.Args,
+	}
+}

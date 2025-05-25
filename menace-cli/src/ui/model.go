@@ -42,6 +42,7 @@ type Model struct {
 
 	// Pending command state
 	PendingCommand          *CommandSuggestionMsg
+	PendingFunctionCall     *FunctionCallMsg
 	AwaitingCommandApproval bool
 }
 
