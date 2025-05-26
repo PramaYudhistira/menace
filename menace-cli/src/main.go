@@ -1,19 +1,12 @@
 package main
 
 import (
-	// "fmt"
-	"fmt"
 	"menace-go/llmServer"
-	// "menace-go/ui"
-	// "os"
-	// tea "github.com/charmbracelet/bubbletea"
-	// zone "github.com/lrstanley/bubblezone"
 )
 
 func main() {
-	llmServer.PushToGitHub()
-	fmt.Println("Pushed to GitHub")
 	// Get API key
+	llmServer.PushToGitHub()
 	// apiKey := os.Getenv("OPENAI_API_KEY")
 	// if apiKey == "" {
 	// 	fmt.Println("Error: OPENAI_API_KEY environment variable not set")
