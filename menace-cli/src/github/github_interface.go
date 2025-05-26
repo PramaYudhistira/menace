@@ -1,4 +1,4 @@
-package llmServer
+package github
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"io"
 )
 
 type PullRequest struct {
@@ -17,13 +18,13 @@ type PullRequest struct {
 	Base  string `json:"base"`
 }
 
-func hasChanges() (bool, error) {
+func hasChanges() (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	output, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("failed to check git status: %v", err)
+		return false, "", fmt.Errorf("failed to check git status: %v", err)
 	}
-	return len(output) > 0, nil
+	return len(output) > 0, string(output), nil
 }
 
 func createPullRequest(branchName string) error {
@@ -82,6 +83,13 @@ func createPullRequest(branchName string) error {
 	}
 	defer resp.Body.Close()
 
+	// PR_URL stored in body under "url" key
+	pr_url, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %v", err)
+	}
+	fmt.Println("Pull request URL: ", string(pr_url))
+
 	// Check response
 	if resp.StatusCode != http.StatusCreated {
 		var errorBody map[string]interface{}
@@ -93,7 +101,7 @@ func createPullRequest(branchName string) error {
 	return nil
 }
 
-func PushToGitHub() error {
+func PushToGitHub(commit_message string) error {
 	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
@@ -110,7 +118,7 @@ func PushToGitHub() error {
 	fmt.Printf("Current branch: %s\n", branchName)
 
 	// Check if there are any changes
-	hasChanges, err := hasChanges()
+	hasChanges, _, err := hasChanges()
 	if err != nil {
 		return fmt.Errorf("failed to check for changes: %v", err)
 	}
@@ -127,7 +135,7 @@ func PushToGitHub() error {
 
 		// Commit changes
 		fmt.Println("Committing changes...")
-		cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
+		cmd = exec.Command("git", "commit", "-m", commit_message)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to commit changes: %v", err)
 		}
