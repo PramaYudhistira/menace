@@ -1,4 +1,4 @@
-package github
+package llmServer
 
 import (
 	"bytes"
@@ -9,6 +9,9 @@ import (
 	"os/exec"
 	"strings"
 	"io"
+	"context"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
 )
 
 type PullRequest struct {
@@ -160,4 +163,51 @@ func PushToGitHub(commit_message string) error {
 	}
 
 	return nil
+}
+
+type Add_check struct {
+	Is_conversation_relevant_to_github string `json:"is_conversation_relevant_to_github"`
+	Reason                             string `json:"reason"`
+	Add                                string `json:"add"`
+}
+
+type Commit_check struct {
+	Is_commit_needed string `json:"is_commit_needed"`
+	Reason           string `json:"reason"`
+	Commit_message   string `json:"commit_message"`
+}
+
+type Pull_request_check struct {
+	Is_pull_request_needed string `json:"is_pull_request_needed"`
+	Reason                  string `json:"reason"`
+}
+
+func isolated_single_message_to_ai(message string) (string, error) {
+	llm, err := openai.New(
+		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+		openai.WithModel("o4-mini-2025-04-16"),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create OpenAI client: %v", err)
+	}
+
+	resp, err := llm.GenerateContent(context.Background(), []llms.MessageContent{
+		{
+			Role:  llms.ChatMessageTypeSystem,
+			Parts: []llms.ContentPart{llms.TextContent{Text: message}},
+		},
+	}, llms.WithTemperature(1))
+
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Content, nil
+}
+
+func convert_str_to_json(str string, json_format interface{}) error {
+	err := json.Unmarshal([]byte(str), json_format)
+	if err != nil {
+		return err
+	}
+	return err
 }

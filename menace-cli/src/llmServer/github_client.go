@@ -1,36 +1,16 @@
-package github
+package llmServer
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
+
 	"github.com/tmc/langchaingo/llms"
-	"github.com/tmc/langchaingo/llms/openai"
 )
 
-type Add_check struct {
-	Is_conversation_relevant_to_github string `json:"is_conversation_relevant_to_github"`
-	Reason                             string `json:"reason"`
-	Add                                string `json:"add"`
-}
-
-type Commit_check struct {
-	Is_commit_needed string `json:"is_commit_needed"`
-	Reason           string `json:"reason"`
-	Commit_message   string `json:"commit_message"`
-}
-
-type Pull_request_check struct {
-	Is_pull_request_needed string `json:"is_pull_request_needed"`
-	Reason                  string `json:"reason"`
-}
-
-func GithubStart(messages []llms.MessageContent) {
+func GithubStart(messages []llms.MessageContent, a *Agent) string {
 	// 1. check if the message chain needs to be added/staged
 	recent_messages := messages
-	if (len(messages) > 3) {
+	if len(messages) > 3 {
 		recent_messages = messages[len(messages)-3:]
 	}
 
@@ -53,26 +33,27 @@ func GithubStart(messages []llms.MessageContent) {
 	resp, err := isolated_single_message_to_ai(add_prompt)
 
 	if err != nil {
-		return
+		return "error"
 	} else {
-		fmt.Println(resp)
+		// fmt.Println(resp)
 		var add_checker Add_check
 		err = convert_str_to_json(resp, &add_checker)
 		if err != nil {
-			return
+			return err.Error()
 		}
 		if add_checker.Add == "true" {
-			fmt.Println("Code needs to be staged")
 			// 2. if staged, assess if enough changes have been made, then commit and push
 			hasChanges, adds, err := hasChanges()
 			if err != nil {
-				return
+				return err.Error()
 			}
 			if hasChanges {
-				fmt.Println("It seems like there are changes that need to be committed, let's check them out.")
+				a.AddToMessageChain(
+					"It seems like there are changes that need to be committed, let's check them out.",
+					llms.ChatMessageTypeSystem,
+				)
 			}
 			// -------------------- GIT COMMIT --------------------
-			fmt.Println(adds)
 			commit_prompt := fmt.Sprintf(`
 				Read the following file changes and determine if we should make a commit. Does the user want to commit the code as is?
 
@@ -92,16 +73,19 @@ func GithubStart(messages []llms.MessageContent) {
 
 			commit_resp, err := isolated_single_message_to_ai(commit_prompt)
 			if err != nil {
-				return
+				return err.Error()
 			}
-			fmt.Println(commit_resp)
+			// fmt.Println(commit_resp)
 			var commit_checker Commit_check
 			err = convert_str_to_json(commit_resp, &commit_checker)
 			if err != nil {
-				return
+				return err.Error()
 			}
 			if commit_checker.Is_commit_needed == "true" {
-				fmt.Print("Do you want to commit the code as is? (y/n): ")
+				a.AddToMessageChain(
+					"Do you want to commit the code as is? (y/n): ",
+					llms.ChatMessageTypeSystem,
+				)
 				var response string
 				fmt.Scanln(&response)
 				if response == "y" {
@@ -126,63 +110,33 @@ func GithubStart(messages []llms.MessageContent) {
 
 					pull_request_resp, err := isolated_single_message_to_ai(pull_request_prompt)
 					if err != nil {
-						return
+						return err.Error()
 					}
-					fmt.Println(pull_request_resp)
+					// fmt.Println(pull_request_resp)
 					var pull_request_checker Pull_request_check
 					err = convert_str_to_json(pull_request_resp, &pull_request_checker)
 					if err != nil {
-						return
+						return err.Error()
 					}
 					if pull_request_checker.Is_pull_request_needed == "true" {
-						fmt.Print("Do you want to create a pull request? (y/n): ")
+						a.AddToMessageChain(
+							"Do you want to create a pull request? (y/n): ",
+							llms.ChatMessageTypeAI,
+						)
 						var response string
 						fmt.Scanln(&response)
 						if response == "y" {
 							branch := exec.Command("git", "branch", "--show-current")
 							branch_name, err := branch.Output()
 							if err != nil {
-								return
+								return err.Error()
 							}
 							createPullRequest(string(branch_name))
 						}
 					}
 				}
-			} else {
-				fmt.Println("Code does not need to be committed")
 			}
-		} else {
-			fmt.Println("Code does not need to be staged")
 		}
 	}
-}
-
-func isolated_single_message_to_ai(message string) (string, error) {
-	llm, err := openai.New(
-		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
-		openai.WithModel("o4-mini-2025-04-16"),
-	)
-	if err != nil {
-		return "", fmt.Errorf("failed to create OpenAI client: %v", err)
-	}
-
-	resp, err := llm.GenerateContent(context.Background(), []llms.MessageContent{
-		{
-			Role:  llms.ChatMessageTypeSystem,
-			Parts: []llms.ContentPart{llms.TextContent{Text: message}},
-		},
-	}, llms.WithTemperature(1))
-
-	if err != nil {
-		return "", err
-	}
-	return resp.Choices[0].Content, nil
-}
-
-func convert_str_to_json(str string, json_format interface{}) error {
-	err := json.Unmarshal([]byte(str), json_format)
-	if err != nil {
-		return err
-	}
-	return err
+	return "continue with the conversation"
 }

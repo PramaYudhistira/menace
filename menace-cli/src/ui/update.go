@@ -371,6 +371,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	
+
+
 	if changed {
 		m.UpdateWindowStart(m.GetMaxInputWidth())
 	}

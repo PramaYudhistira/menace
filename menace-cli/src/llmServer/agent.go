@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/anthropic"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -62,14 +61,21 @@ func NewAgent(apiKey string) (*Agent, error) {
 // Does not interact with UI model.Messages at all.
 // Returns: response, commandSuggestion, error
 func (a *Agent) SendMessage(ctx context.Context, input string) (string, *CommandSuggestion, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
+	// a.mu.Lock()
+	// defer a.mu.Unlock()
 
 	// Add user message to history
 	a.messages = append(a.messages, llms.MessageContent{
 		Role:  llms.ChatMessageTypeHuman,
 		Parts: []llms.ContentPart{llms.TextContent{Text: input}},
 	})
+
+	// Check if a Github action is needed
+	a.AddToMessageChain("Checking if a Github action is needed", llms.ChatMessageTypeSystem)
+	github_action := GithubStart(a.messages, a)
+	if github_action != "continue with the conversation" {
+		return github_action, nil, nil
+	}
 
 	// Get response from LLM
 	response, err := a.llm.GenerateContent(a.ctx, a.messages, llms.WithTemperature(1))
@@ -142,4 +148,11 @@ func (a *Agent) SetModel(provider string, model string) error {
 	default:
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
+}
+
+func (a *Agent) AddToMessageChain(new_message string, role llms.ChatMessageType) {
+	a.messages = append(a.messages, llms.MessageContent{
+		Role:  role,
+		Parts: []llms.ContentPart{llms.TextContent{Text: new_message}},
+	})
 }
