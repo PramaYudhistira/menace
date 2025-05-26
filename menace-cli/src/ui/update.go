@@ -77,21 +77,57 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.AwaitingCommandApproval {
 			switch msg.String() {
 			case "y":
-				// Execute the command
 				m.AwaitingCommandApproval = false
-				output, err := runShellCommand(m.PendingCommand.Command)
-				if err != nil {
-					// TODO: Consider implementing functionality to send error details to the LLM for self-improvement.
-					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+				var output string
+				var err error
+				if m.PendingFunctionCall != nil {
+					switch m.PendingFunctionCall.Name {
+					case "ReadFileWithLineNumbers":
+						path, _ := m.PendingFunctionCall.Args["path"].(string)
+						output, err = ReadFileWithLineNumbers(path)
+					case "CreateAndApplyDiffs":
+						path, _ := m.PendingFunctionCall.Args["path"].(string)
+						diffsRaw, _ := m.PendingFunctionCall.Args["diffs"].([]interface{})
+						var diffs []LineDiff
+						for _, d := range diffsRaw {
+							if diffMap, ok := d.(map[string]interface{}); ok {
+								diff := LineDiff{}
+								if t, ok := diffMap["Type"].(float64); ok {
+									diff.Type = DiffType(int(t))
+								}
+								if idx, ok := diffMap["LineIndex"].(float64); ok {
+									diff.LineIndex = int(idx)
+								}
+								if oldC, ok := diffMap["OldContent"].(string); ok {
+									diff.OldContent = oldC
+								}
+								if newC, ok := diffMap["NewContent"].(string); ok {
+									diff.NewContent = newC
+								}
+								diffs = append(diffs, diff)
+							}
+						}
+						err = CreateAndApplyDiffs(path, diffs)
+						if err == nil {
+							output = "Diffs applied successfully."
+						}
+					}
+					m.PendingFunctionCall = nil
+				} else if m.PendingCommand != nil {
+					output, err = runShellCommand(m.PendingCommand.Command)
+					m.PendingCommand = nil
 				}
-				cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
-				cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
-				cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ") // replace tabs with spaces
-				m.AddSystemMessage(fmt.Sprintf("Command output:\n%s", cleanOutput))
+				if err != nil {
+					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+				} else {
+					cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
+					cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
+					cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
+					m.AddSystemMessage(fmt.Sprintf("Output:\n%s", cleanOutput))
+				}
 				m.StartThinking()
 				return m, tea.Batch(
 					func() tea.Msg {
-						// truncate output?
 						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output)
 						if err != nil {
 							return SystemMessage{Content: "Error: " + err.Error()}
@@ -276,14 +312,55 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case CommandSuggestionMsg:
 		m.PendingCommand = &msg
+		m.PendingFunctionCall = nil
 		m.AwaitingCommandApproval = true
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
-		//TODO: Better UX please
 		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
 		return m, nil
 
 	case LLMResponseMsg:
+		// Try to parse for a function call
+		if fnCall := parseFunctionCall(msg.Content); fnCall != nil {
+			m.PendingFunctionCall = fnCall
+			m.PendingCommand = nil
+			m.AwaitingCommandApproval = true
+			m.StopThinking()
+			m.AddAgentMessage(fmt.Sprintf("Explanation: %s", fnCall.Reason))
+			// If it's a diff, show the diff preview
+			if fnCall.Name == "CreateAndApplyDiffs" {
+				path, _ := fnCall.Args["path"].(string)
+				diffsRaw, _ := fnCall.Args["diffs"].([]interface{})
+				var diffs []LineDiff
+				for _, d := range diffsRaw {
+					if diffMap, ok := d.(map[string]interface{}); ok {
+						diff := LineDiff{}
+						if t, ok := diffMap["Type"].(float64); ok {
+							diff.Type = DiffType(int(t))
+						}
+						if idx, ok := diffMap["LineIndex"].(float64); ok {
+							diff.LineIndex = int(idx)
+						}
+						if oldC, ok := diffMap["OldContent"].(string); ok {
+							diff.OldContent = oldC
+						}
+						if newC, ok := diffMap["NewContent"].(string); ok {
+							diff.NewContent = newC
+						}
+						diffs = append(diffs, diff)
+					}
+				}
+				// Format the diff for display
+				var preview strings.Builder
+				preview.WriteString(fmt.Sprintf("Proposed changes to %s:\n", path))
+				for _, d := range diffs {
+					preview.WriteString(FormatDiff(d) + "\n")
+				}
+				m.AddSystemMessage(preview.String())
+			}
+			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
+			return m, nil
+		}
 		m.StopThinking()
 		m.AddAgentMessage(msg.Content)
 		return m, nil

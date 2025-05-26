@@ -153,4 +153,3 @@ func PushToGitHub() error {
 
 	return nil
 }
-
