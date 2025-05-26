@@ -27,6 +27,7 @@ func hasChanges() (bool, error) {
 }
 
 func createPullRequest(branchName string) error {
+	fmt.Println("getting github token")
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
