@@ -26,25 +26,29 @@ func hasChanges() (bool, error) {
 	return len(output) > 0, nil
 }
 
-func createPullRequest(branchName string) error {
+func createPullRequest(branchName string) (string, error) {
+	var logs strings.Builder
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN environment variable is not set")
+		logs.WriteString("GITHUB_TOKEN environment variable is not set\n")
+		return logs.String(), fmt.Errorf("GITHUB_TOKEN environment variable is not set")
 	}
 
 	// Get repository info
 	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
 	repoURL, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get repository URL: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to get repository URL: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to get repository URL: %v", err)
 	}
 
 	// Parse repository URL to get owner and repo name
 	// Example URL: https://github.com/owner/repo.git
 	parts := strings.Split(strings.TrimSpace(string(repoURL)), "/")
 	if len(parts) < 2 {
-		return fmt.Errorf("invalid repository URL format")
+		logs.WriteString("invalid repository URL format\n")
+		return logs.String(), fmt.Errorf("invalid repository URL format")
 	}
 	repoName := strings.TrimSuffix(parts[len(parts)-1], ".git")
 	owner := parts[len(parts)-2]
@@ -59,14 +63,16 @@ func createPullRequest(branchName string) error {
 
 	jsonData, err := json.Marshal(pr)
 	if err != nil {
-		return fmt.Errorf("failed to marshal PR data: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to marshal PR data: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to marshal PR data: %v", err)
 	}
 
 	// Create HTTP request
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls", owner, repoName)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to create request: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to create request: %v", err)
 	}
 
 	// Set headers
@@ -78,7 +84,8 @@ func createPullRequest(branchName string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send request: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to send request: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to send request: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -86,79 +93,88 @@ func createPullRequest(branchName string) error {
 	if resp.StatusCode != http.StatusCreated {
 		var errorBody map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&errorBody)
-		return fmt.Errorf("failed to create PR: %s", errorBody["message"])
+		logs.WriteString(fmt.Sprintf("failed to create PR: %s\n", errorBody["message"]))
+		return logs.String(), fmt.Errorf("failed to create PR: %s", errorBody["message"])
 	}
 
-	fmt.Println("Pull request created successfully!")
-	return nil
+	logs.WriteString("Pull request created successfully!\n")
+	return logs.String(), nil
 }
 
-func PushToGitHub() error {
+func PushToGitHub() (string, error) {
+	var logs strings.Builder
 	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("not in a git repository: %v", err)
+		logs.WriteString(fmt.Sprintf("not in a git repository: %v\n", err))
+		return logs.String(), fmt.Errorf("not in a git repository: %v", err)
 	}
 
 	// Get the current branch
 	cmd = exec.Command("git", "branch", "--show-current")
 	branch, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get current branch: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to get current branch: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to get current branch: %v", err)
 	}
 	branchName := strings.TrimSpace(string(branch))
-	fmt.Printf("Current branch: %s\n", branchName)
+	logs.WriteString(fmt.Sprintf("Current branch: %s\n", branchName))
 
 	// Check if there are any changes
 	hasChanges, err := hasChanges()
 	if err != nil {
-		return fmt.Errorf("failed to check for changes: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to check for changes: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to check for changes: %v", err)
 	}
 
 	if !hasChanges {
-		fmt.Println("No changes to commit. Proceeding with push...")
-		return nil
+		logs.WriteString("No changes to commit. Proceeding with push...\n")
 	} else {
 		// Add all changes
 		cmd = exec.Command("git", "add", ".")
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to add changes: %v", err)
+			logs.WriteString(fmt.Sprintf("failed to add changes: %v\n", err))
+			return logs.String(), fmt.Errorf("failed to add changes: %v", err)
 		}
 
 		// Commit changes
-		fmt.Println("Committing changes...")
+		logs.WriteString("Committing changes...\n")
 		cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to commit changes: %v", err)
+			logs.WriteString(fmt.Sprintf("failed to commit changes: %v\n", err))
+			return logs.String(), fmt.Errorf("failed to commit changes: %v", err)
 		}
-		fmt.Println("Changes added to commit")
+		logs.WriteString("Changes added to commit\n")
 	}
 
 	// Push to GitHub
-	fmt.Println("Pushing to GitHub...")
+	logs.WriteString("Pushing to GitHub...\n")
 	cmd = exec.Command("git", "push", "origin", branchName)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to push to GitHub: %v", err)
+		logs.WriteString(fmt.Sprintf("failed to push to GitHub: %v\n", err))
+		return logs.String(), fmt.Errorf("failed to push to GitHub: %v", err)
 	}
 
 	// Only create pull request if not on main branch
 	if branchName != "main" {
-		fmt.Println("Creating pull request...")
-		if err := createPullRequest(branchName); err != nil {
-			return fmt.Errorf("failed to create pull request: %v", err)
+		logs.WriteString("Creating pull request...\n")
+		prLogs, err := createPullRequest(branchName)
+		logs.WriteString(prLogs)
+		if err != nil {
+			return logs.String(), fmt.Errorf("failed to create pull request: %v", err)
 		}
 	} else {
-		fmt.Println("On main branch - skipping pull request creation")
+		logs.WriteString("On main branch - skipping pull request creation\n")
 	}
 
-	return nil
+	return logs.String(), nil
 }
 
 // HandlePushCommand handles push command suggestions
-func HandlePushCommand(cmd *CommandSuggestion) error {
+func HandlePushCommand(cmd *CommandSuggestion) (string, error) {
 	// Check if this is a push command
 	if !strings.Contains(cmd.Command, "git push") {
-		return nil // Not a push command, ignore
+		return "", nil // Not a push command, ignore
 	}
 	return PushToGitHub()
 }

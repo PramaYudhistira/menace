@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"menace-go/llmServer"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -46,7 +47,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.SelectionEndY = 0
 
 				if zone.Get("help").InBounds(msg) {
-					m.AddSystemMessage("testing system message")
+					log, _ := llmServer.PushToGitHub()
+					m.AddSystemMessage(log)
 					return m, nil
 				}
 				if zone.Get("config").InBounds(msg) {

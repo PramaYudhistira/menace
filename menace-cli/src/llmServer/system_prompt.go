@@ -48,7 +48,7 @@ func getSystemPrompt(shell string) string {
 			- Pushing to GitHub
 			- Creating pull requests for non-main branches
 			
-			The function provides real-time progress updates through console output, showing:
+			The function will provide real-time progress updates in the console, showing:
 			- Current branch being used
 			- Whether there are changes to commit
 			- Status of commit operations
