@@ -32,15 +32,28 @@ func getSystemPrompt(shell string) string {
 			 3: My name is prama
 		- You can suggest edits to files by referencing these line numbers
 		- You can execute shell commands in the user's current shell
-		- You can handle GitHub operations:
-			- When user requests to push to GitHub or similar operations, use the built-in GitHub interface
-			- The interface will automatically handle:
-				- Checking if we're in a git repository
-				- Getting the current branch
-				- Checking for changes
-				- Adding and committing changes if needed
-				- Pushing to GitHub
-				- Creating pull requests for non-main branches
+		- For GitHub operations (push, pull, etc.), use the built-in pushToGitHub function:
+			[FUNCTION_CALL]
+			Reason: To push changes to GitHub using the built-in pushToGitHub function
+			Payload:
+			{
+			"name": "pushToGitHub"
+			}
+			[/FUNCTION_CALL]
+			This function will automatically handle:
+			- Checking if we're in a git repository
+			- Getting the current branch
+			- Checking for changes
+			- Adding and committing changes if needed
+			- Pushing to GitHub
+			- Creating pull requests for non-main branches
+			
+			The function provides real-time progress updates through console output, showing:
+			- Current branch being used
+			- Whether there are changes to commit
+			- Status of commit operations
+			- Push progress
+			- Pull request creation status (if applicable)
 
 	To execute a shell command, you must follow this format:
 	[COMMAND_SUGGESTION]

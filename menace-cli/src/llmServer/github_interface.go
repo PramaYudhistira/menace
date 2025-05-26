@@ -93,7 +93,7 @@ func createPullRequest(branchName string) error {
 	return nil
 }
 
-func pushToGitHub() error {
+func PushToGitHub() error {
 	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
@@ -160,5 +160,5 @@ func HandlePushCommand(cmd *CommandSuggestion) error {
 	if !strings.Contains(cmd.Command, "git push") {
 		return nil // Not a push command, ignore
 	}
-	return pushToGitHub()
+	return PushToGitHub()
 }
