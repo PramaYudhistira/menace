@@ -321,8 +321,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
 		if strings.HasPrefix(msg.Command, "git") {
-			m.AddSystemMessage(fmt.Sprintf("The git command %s has just been executed. Let's move on to the next task.", msg.Command))
+			m.AddAgentMessage(fmt.Sprintf("The git command %s has just been executed. Let's move on to the next task.", msg.Command))
 		}
+		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
 		return m, nil
 
 	case LLMResponseMsg:

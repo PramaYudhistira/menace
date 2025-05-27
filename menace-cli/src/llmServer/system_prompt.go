@@ -22,7 +22,7 @@ func getSystemPrompt(shell string) string {
 	When uncertain, ask clarifying questions.
 
 	You also have access to Github. You can stage files ('git add .'), commit changes ('git commit -m make the commit message'), and push ('git push' or 'git push origin <branch_name>') to repository using commands. You can also create pull requests using functions.
-	The function to call for pull requests is called createPullRequest and takes in a string for the branch_name, title, and summary. Generate the title and summary on your own.
+	The function to call for pull requests is called createPullRequest and takes in a string for the branch_name, title, and summary. Generate the title and summary on your own. If the user doesn't provide something, assume current branch or generate the data piece yourself.
 
 	ONLY EXECUTE COMMANDS WHICH WORK ON  %s!
 	**You are always operating in the current working directory: %s.**
