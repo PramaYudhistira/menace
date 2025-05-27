@@ -158,5 +158,7 @@ func PushToGitHub() (*GitHubMessage, error) {
 	}
 
 	msg.Content += "\nPush to GitHub completed"
+	fmt.Println("done")
+
 	return msg, nil
 }
