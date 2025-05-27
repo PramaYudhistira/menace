@@ -334,6 +334,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// If the command is not human needed, execute it immediately
 		if !msg.Human_needed {
+			m.AwaitingCommandApproval = false
 			m.AddSystemMessage(fmt.Sprintf("Executing command: %s", msg.Command))
 			output, err := runShellCommand(msg.Command)
 			if err != nil {
@@ -342,6 +343,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", output))
 			}
 			// after execution, re-run the LLM to get the next command
+			m.StartThinking()
 			return m, tea.Batch(
 				func() tea.Msg {	
 					pass_to_next_llm := output
