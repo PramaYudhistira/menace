@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"io"
 	"context"
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -30,7 +29,7 @@ func hasChanges() (bool, string, error) {
 	return len(output) > 0, string(output), nil
 }
 
-func CreatePullRequest(branchName string) error {
+func CreatePullRequest(branchName string, title string, summary string) error {
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -55,8 +54,8 @@ func CreatePullRequest(branchName string) error {
 
 	// Create pull request
 	pr := PullRequest{
-		Title: "Auto PR by test program",
-		Body:  "This is an automated pull request created by the test program.",
+		Title: title,
+		Body:  summary,
 		Head:  branchName,
 		Base:  "main",
 	}
@@ -86,13 +85,6 @@ func CreatePullRequest(branchName string) error {
 	}
 	defer resp.Body.Close()
 
-	// PR_URL stored in body under "url" key
-	pr_url, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body: %v", err)
-	}
-	fmt.Println("Pull request URL: ", string(pr_url))
-
 	// Check response
 	if resp.StatusCode != http.StatusCreated {
 		var errorBody map[string]interface{}
@@ -100,7 +92,6 @@ func CreatePullRequest(branchName string) error {
 		return fmt.Errorf("failed to create PR: %s", errorBody["message"])
 	}
 
-	fmt.Println("Pull request created successfully!")
 	return nil
 }
 
@@ -155,7 +146,7 @@ func PushToGitHub(commit_message string) error {
 	// Only create pull request if not on main branch
 	if branchName != "main" {
 		fmt.Println("Creating pull request...")
-		if err := CreatePullRequest(branchName); err != nil {
+		if err := CreatePullRequest(branchName, "Auto PR by test program", "This is an automated pull request created by the test program."); err != nil {
 			return fmt.Errorf("failed to create pull request: %v", err)
 		}
 	} else {

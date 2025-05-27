@@ -320,7 +320,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AwaitingCommandApproval = true
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
-		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
+		if strings.HasPrefix(msg.Command, "git") {
+			m.AddSystemMessage(fmt.Sprintf("The git command %s has just been executed. Let's move on to the next task.", msg.Command))
+		}
 		return m, nil
 
 	case LLMResponseMsg:
@@ -363,7 +365,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.AddSystemMessage(preview.String())
 			} else if fnCall.Name == "createPullRequest" {
 				branchName, _ := fnCall.Args["branch_name"].(string)
-				err := llmServer.CreatePullRequest(branchName)
+				title, _ := fnCall.Args["title"].(string)
+				summary, _ := fnCall.Args["summary"].(string)
+				err := llmServer.CreatePullRequest(branchName, title, summary)
 				if err != nil {
 					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
 				}

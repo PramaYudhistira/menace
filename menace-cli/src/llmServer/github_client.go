@@ -135,7 +135,7 @@ func GithubStart(messages []llms.MessageContent, a *Agent) string {
 						if err != nil {
 							return err.Error()
 						}
-						CreatePullRequest(string(branch_name))
+						CreatePullRequest(string(branch_name), "Auto PR by test program", "This is an automated pull request created by the test program.")
 					}
 				}
 			}

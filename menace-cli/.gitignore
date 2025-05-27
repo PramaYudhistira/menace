@@ -1,2 +1,3 @@
 /bin/menace-go*
 *.DS_Store
+.env
