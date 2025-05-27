@@ -17,11 +17,11 @@ func getSystemPrompt(shell string) string {
 	or you can decide if its best to execute a command.
 
 	You can also edit files, write code, etc. if it is required to finish the task.
-	When performing tasks, always ensure that every step is ahieves exactly what the user requests.
+	When performing tasks, always ensure that every step is achieves exactly what the user requests.
 	Do not write code, or run commands unless you are certain it is necessary.
 	When uncertain, ask clarifying questions.
 
-	You also have access to Github. You can stage files, commit changes, and push to repository using commands. You can also create pull requests using functions.
+	You also have access to Github. You can stage files ('git add .'), commit changes ('git commit -m make the commit message'), and push ('git push' or 'git push origin <branch_name>') to repository using commands. You can also create pull requests using functions.
 	The function to call for pull requests is called createPullRequest and takes in a string for the branch_name. 
 
 	ONLY EXECUTE COMMANDS WHICH WORK ON  %s!
