@@ -86,7 +86,7 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	if fnCall := parseFunctionCall(responseText); fnCall != nil {
 		switch fnCall.Name {
 		case "PushToGitHub":
-			if err := pushToGitHub(); err != nil {
+			if err := PushToGitHub(); err != nil {
 				return fmt.Sprintf("Error pushing to GitHub: %v", err), nil, nil
 			}
 			return "Successfully pushed changes to GitHub", nil, nil
