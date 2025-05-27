@@ -86,19 +86,21 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	if fnCall := parseFunctionCall(responseText); fnCall != nil {
 		switch fnCall.Name {
 		case "PushToGitHub":
-			if err := PushToGitHub(); err != nil {
+			msg, err := PushToGitHub()
+			if err != nil {
 				return fmt.Sprintf("Error pushing to GitHub: %v", err), nil, nil
 			}
-			return "Successfully pushed changes to GitHub", nil, nil
+			return msg.Content, nil, nil
 		case "CreatePullRequest":
 			branchName, ok := fnCall.Args["branchName"].(string)
 			if !ok {
 				return "Error: branchName argument is required", nil, nil
 			}
-			if err := createPullRequest(branchName); err != nil {
+			msg, err := createPullRequest(branchName)
+			if err != nil {
 				return fmt.Sprintf("Error creating pull request: %v", err), nil, nil
 			}
-			return "Successfully created pull request", nil, nil
+			return msg.Content, nil, nil
 		}
 	}
 

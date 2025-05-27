@@ -17,6 +17,11 @@ type PullRequest struct {
 	Base  string `json:"base"`
 }
 
+// GitHubMessage represents a message from GitHub operations
+type GitHubMessage struct {
+	Content string
+}
+
 func hasChanges() (bool, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	output, err := cmd.Output()
@@ -26,25 +31,25 @@ func hasChanges() (bool, error) {
 	return len(output) > 0, nil
 }
 
-func createPullRequest(branchName string) error {
+func createPullRequest(branchName string) (*GitHubMessage, error) {
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN environment variable is not set")
+		return nil, fmt.Errorf("GITHUB_TOKEN environment variable is not set")
 	}
 
 	// Get repository info
 	cmd := exec.Command("git", "config", "--get", "remote.origin.url")
 	repoURL, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get repository URL: %v", err)
+		return nil, fmt.Errorf("failed to get repository URL: %v", err)
 	}
 
 	// Parse repository URL to get owner and repo name
 	// Example URL: https://github.com/owner/repo.git
 	parts := strings.Split(strings.TrimSpace(string(repoURL)), "/")
 	if len(parts) < 2 {
-		return fmt.Errorf("invalid repository URL format")
+		return nil, fmt.Errorf("invalid repository URL format")
 	}
 	repoName := strings.TrimSuffix(parts[len(parts)-1], ".git")
 	owner := parts[len(parts)-2]
@@ -59,14 +64,14 @@ func createPullRequest(branchName string) error {
 
 	jsonData, err := json.Marshal(pr)
 	if err != nil {
-		return fmt.Errorf("failed to marshal PR data: %v", err)
+		return nil, fmt.Errorf("failed to marshal PR data: %v", err)
 	}
 
 	// Create HTTP request
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/pulls", owner, repoName)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
+		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
 	// Set headers
@@ -78,7 +83,7 @@ func createPullRequest(branchName string) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to send request: %v", err)
+		return nil, fmt.Errorf("failed to send request: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -86,69 +91,72 @@ func createPullRequest(branchName string) error {
 	if resp.StatusCode != http.StatusCreated {
 		var errorBody map[string]interface{}
 		json.NewDecoder(resp.Body).Decode(&errorBody)
-		return fmt.Errorf("failed to create PR: %s", errorBody["message"])
+		return nil, fmt.Errorf("failed to create PR: %s", errorBody["message"])
 	}
 
-	fmt.Println("Pull request created successfully!")
-	return nil
+	return &GitHubMessage{Content: "Pull request created successfully!"}, nil
 }
 
-func PushToGitHub() error {
+func PushToGitHub() (*GitHubMessage, error) {
 	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("not in a git repository: %v", err)
+		return nil, fmt.Errorf("not in a git repository: %v", err)
 	}
 
 	// Get the current branch
 	cmd = exec.Command("git", "branch", "--show-current")
 	branch, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("failed to get current branch: %v", err)
+		return nil, fmt.Errorf("failed to get current branch: %v", err)
 	}
 	branchName := strings.TrimSpace(string(branch))
-	fmt.Printf("Current branch: %s\n", branchName)
+	msg := &GitHubMessage{Content: fmt.Sprintf("Current branch: %s", branchName)}
 
 	// Check if there are any changes
 	hasChanges, err := hasChanges()
 	if err != nil {
-		return fmt.Errorf("failed to check for changes: %v", err)
+		return nil, fmt.Errorf("failed to check for changes: %v", err)
 	}
 
 	if !hasChanges {
-		fmt.Println("No changes to commit. Proceeding with push...")
-		return nil
-	} else {
-		// Add all changes
-		cmd = exec.Command("git", "add", ".")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to add changes: %v", err)
-		}
-
-		// Commit changes
-		fmt.Println("Committing changes...")
-		cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to commit changes: %v", err)
-		}
-		fmt.Println("Changes added to commit")
+		msg.Content += "\nNo changes to commit. Aborting push."
+		return msg, nil
 	}
 
+	// Add all changes
+	cmd = exec.Command("git", "add", ".")
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to add changes: %v", err)
+	}
+
+	// Commit changes
+	msg.Content += "\nCommitting changes..."
+	cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed to commit changes: %v", err)
+	}
+	msg.Content += "\nChanges added to commit"
+
 	// Push to GitHub
-	fmt.Println("Pushing to GitHub...")
+	msg.Content += "\nPushing to GitHub..."
 	cmd = exec.Command("git", "push", "origin", branchName)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to push to GitHub: %v", err)
+		return nil, fmt.Errorf("failed to push to GitHub: %v", err)
 	}
 
 	// Only create pull request if not on main branch
 	if branchName != "main" {
-		if err := createPullRequest(branchName); err != nil {
-			return fmt.Errorf("failed to create pull request: %v", err)
+		msg.Content += "\nCreating pull request..."
+		prMsg, err := createPullRequest(branchName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create pull request: %v", err)
 		}
+		msg.Content += "\n" + prMsg.Content
 	} else {
-		fmt.Println("On main branch - skipping pull request creation")
+		msg.Content += "\nOn main branch - skipping pull request creation"
 	}
-	fmt.Println("Push to GitHub completed")
-	return nil
+
+	msg.Content += "\nPush to GitHub completed"
+	return msg, nil
 }
