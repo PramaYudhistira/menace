@@ -332,6 +332,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.agent.AddToMessageChain("Your next step should be to create a pull request, only if the user asks to create a pull request", "")
 		}
 
+
 		// If the command is not human needed, execute it immediately
 		if !msg.Human_needed {
 			m.AwaitingCommandApproval = false
@@ -350,9 +351,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err != nil {
 						pass_to_next_llm = err.Error()
 					}
+					cleanOutput := strings.ReplaceAll(pass_to_next_llm, "\r\n", "\n")
+					cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
+					cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
 					response, cmdSuggestion, err := m.agent.SendMessage(
 						context.Background(), 
-						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, pass_to_next_llm),
+						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, cleanOutput),
 					)
 					
 					if err != nil {
