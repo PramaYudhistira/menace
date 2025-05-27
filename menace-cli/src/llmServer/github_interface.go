@@ -192,6 +192,7 @@ func isolated_single_message_to_ai(message string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	fmt.Println("test")
 	return resp.Choices[0].Content, nil
 }
 
