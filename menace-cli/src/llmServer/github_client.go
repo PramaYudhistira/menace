@@ -41,7 +41,6 @@ func GithubStart(messages []llms.MessageContent, a *Agent) string {
 		if err != nil {
 			return err.Error()
 		}
-		fmt.Println(add_checker)
 		if add_checker.Add == "true" {
 			a.AddToMessageChain(
 				"I think we should stage the changes",

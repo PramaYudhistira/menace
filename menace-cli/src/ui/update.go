@@ -9,6 +9,10 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 )
 
+func (m *Model) ShowSystemMessageOnUI(message string) {
+	m.AddSystemMessage(message)
+}
+
 // Update handles all incoming messages (keypresses, etc.).
 //
 // Part of Bubble Tea Model interface
@@ -128,7 +132,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.StartThinking()
 				return m, tea.Batch(
 					func() tea.Msg {
-						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output)
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output, m.ShowSystemMessageOnUI)
 						if err != nil {
 							return SystemMessage{Content: "Error: " + err.Error()}
 						}
@@ -149,7 +153,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(
 					func() tea.Msg {
 
-						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), "No, stop for now.")
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), "No, stop for now.", m.ShowSystemMessageOnUI)
 						if err != nil {
 							return SystemMessage{Content: "Error: " + err.Error()}
 						}
@@ -248,7 +252,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Send to agent and get response asynchronously via Bubble Tea command
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput, m)
+					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput, m.ShowSystemMessageOnUI)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
@@ -370,9 +374,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AddSystemMessage(msg.Content)
 		return m, nil
 	}
-
-
-
 
 	if changed {
 		m.UpdateWindowStart(m.GetMaxInputWidth())

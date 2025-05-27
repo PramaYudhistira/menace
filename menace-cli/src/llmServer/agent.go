@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/anthropic"
 	"github.com/tmc/langchaingo/llms/openai"
@@ -60,7 +61,7 @@ func NewAgent(apiKey string) (*Agent, error) {
 //
 // Does not interact with UI model.Messages at all.
 // Returns: response, commandSuggestion, error
-func (a *Agent) SendMessage(ctx context.Context, input string, model *ui.Model) (string, *CommandSuggestion, error) {
+func (a *Agent) SendMessage(ctx context.Context, input string, systemMsgCallback func(string)) (string, *CommandSuggestion, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -71,14 +72,8 @@ func (a *Agent) SendMessage(ctx context.Context, input string, model *ui.Model) 
 	})
 
 	// Check if a Github action is needed
-	// a.messages = append(a.messages, llms.MessageContent{
-	// 	Role:  llms.ChatMessageTypeSystem,
-	// 	Parts: []llms.ContentPart{llms.TextContent{Text: "Checking if a Github action is needed"}},
-	// })
+	systemMsgCallback("Checking if a Github action is needed")
 
-	// need to access this specific function from the Bubble Tea model
-	model.AddSystemMessage("Checking if a Github action is needed")
-	
 	github_action := GithubStart(a.messages, a)
 	if github_action != "continue with the conversation" {
 		return github_action, nil, nil
