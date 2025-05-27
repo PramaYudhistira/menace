@@ -143,7 +143,6 @@ func PushToGitHub() error {
 
 	// Only create pull request if not on main branch
 	if branchName != "main" {
-		fmt.Println("Creating pull request...")
 		if err := createPullRequest(branchName); err != nil {
 			return fmt.Errorf("failed to create pull request: %v", err)
 		}
