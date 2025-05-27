@@ -1,6 +1,7 @@
 package llmServer
 
 import (
+	"encoding/json"
 	"strings"
 )
 
@@ -9,6 +10,12 @@ import (
 type CommandSuggestion struct {
 	Reason  string
 	Command string
+}
+
+// FunctionCall represents a function call from the LLM
+type FunctionCall struct {
+	Name string                 `json:"name"`
+	Args map[string]interface{} `json:"args"`
 }
 
 // Run this after every LLM response
@@ -45,4 +52,29 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 		Reason:  reason,
 		Command: command,
 	}
+}
+
+// parseFunctionCall parses a [FUNCTION_CALL] block from the LLM response
+// Returns nil if no function call is found or parsing fails
+func parseFunctionCall(response string) *FunctionCall {
+	start := strings.Index(response, "[FUNCTION_CALL]")
+	end := strings.Index(response, "[/FUNCTION_CALL]")
+	if start == -1 || end == -1 {
+		return nil
+	}
+
+	content := response[start:end]
+	payloadStart := strings.Index(content, "Payload:")
+	if payloadStart == -1 {
+		return nil
+	}
+
+	// Extract the JSON payload
+	jsonStr := strings.TrimSpace(content[payloadStart+len("Payload:"):])
+	var fnCall FunctionCall
+	if err := json.Unmarshal([]byte(jsonStr), &fnCall); err != nil {
+		return nil
+	}
+
+	return &fnCall
 }

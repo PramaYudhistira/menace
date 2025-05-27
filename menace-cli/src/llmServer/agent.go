@@ -82,8 +82,29 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 		responseText = response.Choices[0].Content
 	}
 
+	// Parse for function calls
+	if fnCall := parseFunctionCall(responseText); fnCall != nil {
+		switch fnCall.Name {
+		case "PushToGitHub":
+			msg, err := PushToGitHub()
+			if err != nil {
+				return fmt.Sprintf("Error pushing to GitHub: %v", err), nil, nil
+			}
+			return msg.Content, nil, nil
+		case "CreatePullRequest":
+			branchName, ok := fnCall.Args["branchName"].(string)
+			if !ok {
+				return "Error: branchName argument is required", nil, nil
+			}
+			msg, err := createPullRequest(branchName)
+			if err != nil {
+				return fmt.Sprintf("Error creating pull request: %v", err), nil, nil
+			}
+			return msg.Content, nil, nil
+		}
+	}
+
 	// Parse for command suggestion
-	//integrate this with code execution
 	cmdSuggestion := parseCommandSuggestion(responseText)
 
 	// Add assistant's response to history

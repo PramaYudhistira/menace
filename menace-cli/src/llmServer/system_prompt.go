@@ -99,6 +99,28 @@ func getSystemPrompt(shell string) string {
 
 	You can edit files, write code from the functions, and search for files and functions using commands.
 
+	For GitHub operations, you can use these special function calls:
+
+	[FUNCTION_CALL]
+	Reason: To push changes to GitHub and create a PR if not on main branch
+	Payload:
+	{
+		"name": "PushToGitHub",
+		"args": {}
+	}
+	[/FUNCTION_CALL]
+
+	[FUNCTION_CALL]
+	Reason: To create a pull request from the current branch
+	Payload:
+	{
+		"name": "CreatePullRequest",
+		"args": {
+			"branchName": "your-branch-name"
+		}
+	}
+	[/FUNCTION_CALL]
+
 	If you need to edit a file:
 	- First, inform the user and ask for their approval.
 	- Only proceed with the edit if the user agrees.
