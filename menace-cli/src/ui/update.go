@@ -344,10 +344,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// after execution, re-run the LLM to get the next command
 			return m, tea.Batch(
 				func() tea.Msg {	
+					pass_to_next_llm := output
+					if err != nil {
+						pass_to_next_llm = err.Error()
+					}
 					response, cmdSuggestion, err := m.agent.SendMessage(
 						context.Background(), 
-						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, output),
+						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, pass_to_next_llm),
 					)
+					
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
