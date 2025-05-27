@@ -415,6 +415,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				err := llmServer.CreatePullRequest(branchName, title, summary)
 				if err != nil {
 					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+					m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
 				}
 			}
 			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
