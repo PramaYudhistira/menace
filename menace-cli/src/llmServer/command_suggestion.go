@@ -7,8 +7,9 @@ import (
 // CommandSuggestion is a struct that contains the reason and command from the LLM response
 // This is used to parse the LLM response and extract the command suggestion
 type CommandSuggestion struct {
-	Reason  string
-	Command string
+	Reason       string
+	Command      string
+	Human_needed string
 }
 
 // Run this after every LLM response
@@ -30,8 +31,9 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	// Parse reason and command
 	reasonStart := strings.Index(content, "Reason: ")
 	commandStart := strings.Index(content, "Command: ")
+	humanNeededStart := strings.Index(content, "Human_needed: ")
 
-	if reasonStart == -1 || commandStart == -1 {
+	if reasonStart == -1 || commandStart == -1 || humanNeededStart == -1 {
 		return nil
 	}
 
@@ -39,10 +41,14 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	reason := strings.TrimSpace(content[reasonStart+8 : commandStart])
 
 	// Extract command (from "Command: " to end)
-	command := strings.TrimSpace(content[commandStart+8:])
+	command := strings.TrimSpace(content[commandStart+8 : humanNeededStart])
+
+	// Extract human needed (from "Human_needed: " to end)
+	humanNeeded := strings.TrimSpace(content[humanNeededStart+12:])
 
 	return &CommandSuggestion{
 		Reason:  reason,
 		Command: command,
+		Human_needed: humanNeeded,
 	}
 }

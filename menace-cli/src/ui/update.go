@@ -7,6 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
+	"menace-go/llmServer"
+
 )
 
 // Update handles all incoming messages (keypresses, etc.).
@@ -229,9 +231,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Case for Enter key press
 		//Should send message to LLM
 		case tea.KeyEnter.String():
+			
 			if m.Input == "" {
 				return m, nil
 			}
+
+			// callbackSystemMessage("Hello from the UI")
 
 			// Add user message to UI
 			m.AddUserMessage(m.Input)
@@ -316,8 +321,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AwaitingCommandApproval = true
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
-		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
-		return m, nil
+
+		// For git commands, the LLM gets extra context to guide it to its next step
+		if strings.HasPrefix(msg.Command, "git add") {
+			_, adds, _ := llmServer.HasChanges()
+			m.agent.AddToMessageChain(fmt.Sprintf("Your next step should be to commit, only if the user asks to commit or beyond (push or pr). Here are the changes so far: %s", adds), "")
+		} else if strings.HasPrefix(msg.Command, "git commit") {
+			m.agent.AddToMessageChain("Your next step should be to push, only if the user asks to push or beyond (pr)", "")
+		} else if strings.HasPrefix(msg.Command, "git push") {
+			m.agent.AddToMessageChain("Your next step should be to create a pull request, only if the user asks to create a pull request", "")
+		}
+
+		// If the command is not human needed, execute it immediately
+		if !msg.Human_needed {
+			m.AddSystemMessage(fmt.Sprintf("Executing command: %s", msg.Command))
+			output, err := runShellCommand(msg.Command)
+			if err != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			} else {
+				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", output))
+			}
+			// after execution, re-run the LLM to get the next command
+			return m, tea.Batch(
+				func() tea.Msg {	
+					response, cmdSuggestion, err := m.agent.SendMessage(
+						context.Background(), 
+						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, output),
+					)
+					if err != nil {
+						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					if cmdSuggestion != nil {
+						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+					}
+					return LLMResponseMsg{Content: response}
+				},
+				thinkingTick(),
+			)
+		} else {
+			m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
+			return m, nil
+		}
 
 	case LLMResponseMsg:
 		// Try to parse for a function call
@@ -357,6 +401,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					preview.WriteString(FormatDiff(d) + "\n")
 				}
 				m.AddSystemMessage(preview.String())
+			} else if fnCall.Name == "createPullRequest" {
+				branchName, _ := fnCall.Args["branch_name"].(string)
+				title, _ := fnCall.Args["title"].(string)
+				summary, _ := fnCall.Args["summary"].(string)
+				err := llmServer.CreatePullRequest(branchName, title, summary)
+				if err != nil {
+					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+				}
 			}
 			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
 			return m, nil

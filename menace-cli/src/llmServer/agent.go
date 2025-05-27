@@ -143,3 +143,13 @@ func (a *Agent) SetModel(provider string, model string) error {
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
 }
+
+func (a *Agent) AddToMessageChain(new_message string, role llms.ChatMessageType) {
+	if role == "" {
+		role = llms.ChatMessageTypeSystem
+	}
+	a.messages = append(a.messages, llms.MessageContent{
+		Role:  role,
+		Parts: []llms.ContentPart{llms.TextContent{Text: new_message}},
+	})
+}
