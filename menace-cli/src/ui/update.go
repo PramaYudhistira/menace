@@ -248,7 +248,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Send to agent and get response asynchronously via Bubble Tea command
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput)
+					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput, m)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
@@ -371,7 +371,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	
+
 
 
 	if changed {

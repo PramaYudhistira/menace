@@ -41,17 +41,22 @@ func GithubStart(messages []llms.MessageContent, a *Agent) string {
 		if err != nil {
 			return err.Error()
 		}
+		fmt.Println(add_checker)
 		if add_checker.Add == "true" {
+			a.AddToMessageChain(
+				"I think we should stage the changes",
+				llms.ChatMessageTypeSystem,
+			)
 			// 2. if staged, assess if enough changes have been made, then commit and push
 			hasChanges, adds, err := hasChanges()
 			if err != nil {
 				return err.Error()
 			}
 			if hasChanges {
-				a.AddToMessageChain(
-					"It seems like there are changes that need to be committed, let's check them out.",
-					llms.ChatMessageTypeSystem,
-				)
+				a.messages = append(a.messages, llms.MessageContent{
+					Role:  llms.ChatMessageTypeSystem,
+					Parts: []llms.ContentPart{llms.TextContent{Text: "It seems like there are changes that need to be committed, let's check them out."}},
+				})
 			}
 			// -------------------- GIT COMMIT --------------------
 			commit_prompt := fmt.Sprintf(`
