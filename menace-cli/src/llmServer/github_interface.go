@@ -150,8 +150,7 @@ func pushToGitHub() error {
 	} else {
 		fmt.Println("On main branch - skipping pull request creation")
 	}
+	fmt.Println("Push to GitHub completed")
 
 	return nil
 }
-
-
