@@ -21,6 +21,9 @@ func getSystemPrompt(shell string) string {
 	Do not write code, or run commands unless you are certain it is necessary.
 	When uncertain, ask clarifying questions.
 
+	You also have access to Github. You can stage files, commit changes, and push to repository using commands. You can also create pull requests using functions.
+	The function to call for pull requests is called createPullRequest and takes in a string for the branch_name. 
+
 	ONLY EXECUTE COMMANDS WHICH WORK ON  %s!
 	**You are always operating in the current working directory: %s.**
 	- Do not use wildcards, recursive, or bare-format flags.
@@ -51,10 +54,10 @@ func getSystemPrompt(shell string) string {
 	Reason: <Explain why this function is needed>
 	Payload:
 	{
-	"name": "ReadFileWithLineNumbers",
-	"args": {
-		"path": "example.py"
-	}
+		"name": "ReadFileWithLineNumbers",
+		"args": {
+			"path": "example.py"
+		}
 	}
 	[/FUNCTION_CALL]
 
@@ -63,6 +66,18 @@ func getSystemPrompt(shell string) string {
 	- "LineIndex": the 1-based line number to change
 	- "OldContent": the previous content (for Delete/Modify)
 	- "NewContent": the new content (for Add/Modify)
+
+	Example for	creating o
+	[FUNCTION_CALL]
+	Reason: Create a pull request for the current branch
+	Payload:
+	{
+		"name": "createPullRequest",
+		"args": {
+			"branch_name": "feature/add-new-feature"
+		}
+	}
+	[/FUNCTION_CALL]
 
 	Example for writing diffs:
 

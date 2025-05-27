@@ -7,11 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
+	"menace-go/llmServer"
 )
-
-func (m *Model) ShowSystemMessageOnUI(message string) {
-	m.AddSystemMessage(message)
-}
 
 // Update handles all incoming messages (keypresses, etc.).
 //
@@ -132,7 +129,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.StartThinking()
 				return m, tea.Batch(
 					func() tea.Msg {
-						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output, m.ShowSystemMessageOnUI)
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), output)
 						if err != nil {
 							return SystemMessage{Content: "Error: " + err.Error()}
 						}
@@ -153,7 +150,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(
 					func() tea.Msg {
 
-						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), "No, stop for now.", m.ShowSystemMessageOnUI)
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), "No, stop for now.")
 						if err != nil {
 							return SystemMessage{Content: "Error: " + err.Error()}
 						}
@@ -233,9 +230,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//Case for Enter key press
 		//Should send message to LLM
 		case tea.KeyEnter.String():
+			
 			if m.Input == "" {
 				return m, nil
 			}
+
+			// callbackSystemMessage("Hello from the UI")
 
 			// Add user message to UI
 			m.AddUserMessage(m.Input)
@@ -252,7 +252,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Send to agent and get response asynchronously via Bubble Tea command
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput, m.ShowSystemMessageOnUI)
+					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
@@ -361,6 +361,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					preview.WriteString(FormatDiff(d) + "\n")
 				}
 				m.AddSystemMessage(preview.String())
+			} else if fnCall.Name == "createPullRequest" {
+				branchName, _ := fnCall.Args["branch_name"].(string)
+				err := llmServer.CreatePullRequest(branchName)
+				if err != nil {
+					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+				}
 			}
 			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
 			return m, nil

@@ -30,7 +30,7 @@ func hasChanges() (bool, string, error) {
 	return len(output) > 0, string(output), nil
 }
 
-func createPullRequest(branchName string) error {
+func CreatePullRequest(branchName string) error {
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -155,7 +155,7 @@ func PushToGitHub(commit_message string) error {
 	// Only create pull request if not on main branch
 	if branchName != "main" {
 		fmt.Println("Creating pull request...")
-		if err := createPullRequest(branchName); err != nil {
+		if err := CreatePullRequest(branchName); err != nil {
 			return fmt.Errorf("failed to create pull request: %v", err)
 		}
 	} else {

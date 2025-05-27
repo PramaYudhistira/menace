@@ -61,7 +61,7 @@ func NewAgent(apiKey string) (*Agent, error) {
 //
 // Does not interact with UI model.Messages at all.
 // Returns: response, commandSuggestion, error
-func (a *Agent) SendMessage(ctx context.Context, input string, systemMsgCallback func(string)) (string, *CommandSuggestion, error) {
+func (a *Agent) SendMessage(ctx context.Context, input string) (string, *CommandSuggestion, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -70,14 +70,6 @@ func (a *Agent) SendMessage(ctx context.Context, input string, systemMsgCallback
 		Role:  llms.ChatMessageTypeHuman,
 		Parts: []llms.ContentPart{llms.TextContent{Text: input}},
 	})
-
-	// Check if a Github action is needed
-	systemMsgCallback("Checking if a Github action is needed")
-
-	github_action := GithubStart(a.messages, a)
-	if github_action != "continue with the conversation" {
-		return github_action, nil, nil
-	}
 
 	// Get response from LLM
 	response, err := a.llm.GenerateContent(a.ctx, a.messages, llms.WithTemperature(1))
