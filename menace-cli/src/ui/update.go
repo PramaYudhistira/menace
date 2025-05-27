@@ -8,6 +8,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
 	"menace-go/llmServer"
+
 )
 
 // Update handles all incoming messages (keypresses, etc.).
@@ -320,8 +321,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AwaitingCommandApproval = true
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
-		if strings.HasPrefix(msg.Command, "git") {
-			m.AddAgentMessage(fmt.Sprintf("The git command %s has just been executed. Let's move on to the next task.", msg.Command))
+		if strings.HasPrefix(msg.Command, "git add") {
+			_, adds, _ := llmServer.HasChanges()
+			m.agent.AddToMessageChain(fmt.Sprintf("Your next step should be to commit, only if the user asks to commit or beyond (push or pr). Here are the changes so far: %s", adds), "")
+		} else if strings.HasPrefix(msg.Command, "git commit") {
+			m.agent.AddToMessageChain("Your next step should be to push, only if the user asks to push or beyond (pr)", "")
+		} else if strings.HasPrefix(msg.Command, "git push") {
+			m.agent.AddToMessageChain("Your next step should be to create a pull request, only if the user asks to create a pull request", "")
 		}
 		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
 		return m, nil

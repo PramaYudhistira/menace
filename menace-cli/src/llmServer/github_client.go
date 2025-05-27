@@ -47,7 +47,7 @@ func GithubStart(messages []llms.MessageContent, a *Agent) string {
 			llms.ChatMessageTypeSystem,
 		)
 		// 2. if staged, assess if enough changes have been made, then commit and push
-		hasChanges, adds, err := hasChanges()
+		hasChanges, adds, err := HasChanges()
 		if err != nil {
 			return err.Error()
 		}

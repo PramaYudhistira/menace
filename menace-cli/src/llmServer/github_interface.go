@@ -20,7 +20,7 @@ type PullRequest struct {
 	Base  string `json:"base"`
 }
 
-func hasChanges() (bool, string, error) {
+func HasChanges() (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	output, err := cmd.Output()
 	if err != nil {
@@ -112,7 +112,7 @@ func PushToGitHub(commit_message string) error {
 	fmt.Printf("Current branch: %s\n", branchName)
 
 	// Check if there are any changes
-	hasChanges, _, err := hasChanges()
+	hasChanges, _, err := HasChanges()
 	if err != nil {
 		return fmt.Errorf("failed to check for changes: %v", err)
 	}
