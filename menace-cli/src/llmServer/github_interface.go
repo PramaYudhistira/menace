@@ -2,13 +2,14 @@ package llmServer
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
 	"strings"
-	"context"
+
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/openai"
 )
@@ -170,7 +171,7 @@ type Commit_check struct {
 
 type Pull_request_check struct {
 	Is_pull_request_needed string `json:"is_pull_request_needed"`
-	Reason                  string `json:"reason"`
+	Reason                 string `json:"reason"`
 }
 
 func isolated_single_message_to_ai(message string) (string, error) {
@@ -201,5 +202,6 @@ func convert_str_to_json(str string, json_format interface{}) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("test2")
 	return err
 }
