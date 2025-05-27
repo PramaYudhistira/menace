@@ -40,12 +40,14 @@ func getSystemPrompt(shell string) string {
 	[COMMAND_SUGGESTION]
 	Reason: <explain why this command is needed>
 	Command: your_command_here
+	Human_needed: true/false (true if the human needs to be involved, false if the command can be executed automatically)
 	[/COMMAND_SUGGESTION]
 
 	Example:
 	[COMMAND_SUGGESTION]
 	Reason: To list all files in the current directory
 	Command: ls
+	Human_needed: false
 	[/COMMAND_SUGGESTION]
 
 	To read or write files, use a FUNCTION_CALL block—don't shell out:

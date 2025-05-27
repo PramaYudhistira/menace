@@ -21,6 +21,7 @@ type LLMResponseMsg struct {
 type CommandSuggestionMsg struct {
 	Command string
 	Reason  string
+	Human_needed bool
 }
 
 // Represents a function call suggestion if the LLM returns one.
