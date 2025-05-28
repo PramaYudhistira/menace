@@ -75,7 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-
+		// handle execution of command when awaiting command approval
 		if m.AwaitingCommandApproval {
 			switch msg.String() {
 			case "y":
@@ -228,15 +228,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				changed = true
 			}
 
-		//Case for Enter key press
-		//Should send message to LLM
+		// Case for Enter key press -- START OF DEBUGGING
+		// Should send message to LLM
 		case tea.KeyEnter.String():
 			
 			if m.Input == "" {
 				return m, nil
 			}
-
-			// callbackSystemMessage("Hello from the UI")
 
 			// Add user message to UI
 			m.AddUserMessage(m.Input)
@@ -251,14 +249,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ClearState()
 
 			// Send to agent and get response asynchronously via Bubble Tea command
+			// All the return types are re-entered into this large switch statement
+			// Check case CommandSuggestionMsg, LLMResponseMsg, and SystemMessage for more details
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput)
+					response, cmdSuggestion, err := m.agent.SendMessage(
+						context.Background(), 
+						userInput,
+					)
+					// fmt.Println("userInput: ", userInput)
+					// fmt.Println("response: ", response)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
 					if cmdSuggestion != nil {
-						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						return CommandSuggestionMsg{
+							Command: cmdSuggestion.Command, 
+							Reason: cmdSuggestion.Reason, 
+							AwaitingCommandApproval: cmdSuggestion.AwaitingCommandApproval == "true",
+						}
 					}
 					return LLMResponseMsg{Content: response}
 				},
@@ -315,10 +324,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	// Adding extra context prior to actually executing the commands, think of this as pre-run add-ons
 	case CommandSuggestionMsg:
 		m.PendingCommand = &msg
 		m.PendingFunctionCall = nil
-		m.AwaitingCommandApproval = true
+		m.AwaitingCommandApproval = msg.AwaitingCommandApproval
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
 
@@ -332,46 +342,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.agent.AddToMessageChain("Your next step should be to create a pull request, only if the user asks to create a pull request", "")
 		}
 
-
-		// If the command is not human needed, execute it immediately
-		if !msg.Human_needed {
-			m.AwaitingCommandApproval = false
-			m.AddSystemMessage(fmt.Sprintf("Executing command: %s", msg.Command))
-			output, err := runShellCommand(msg.Command)
-			if err != nil {
-				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
-			} else {
-				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", output))
-			}
-			// after execution, re-run the LLM to get the next command
-			m.StartThinking()
+		// Not all commands needs human intervention, so we can skip the command execution handled in case SkipStepMsg
+		if m.AwaitingCommandApproval {
+			m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
+			return m, nil
+		} else {
 			return m, tea.Batch(
-				func() tea.Msg {	
-					pass_to_next_llm := output
-					if err != nil {
-						pass_to_next_llm = err.Error()
-					}
-					cleanOutput := strings.ReplaceAll(pass_to_next_llm, "\r\n", "\n")
-					cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
-					cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
-					response, cmdSuggestion, err := m.agent.SendMessage(
-						context.Background(), 
-						fmt.Sprintf("Command %s executed. Output: %s", msg.Command, cleanOutput),
-					)
-					
-					if err != nil {
-						return SystemMessage{Content: "Error: " + err.Error()}
-					}
-					if cmdSuggestion != nil {
-						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
-					}
-					return LLMResponseMsg{Content: response}
+				func() tea.Msg {
+					m.StartThinking()
+					return SkipStepMsg{Command_to_execute: &msg, Function_to_execute: nil}
 				},
 				thinkingTick(),
 			)
-		} else {
-			m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
-			return m, nil
 		}
 
 	case LLMResponseMsg:
@@ -433,6 +415,44 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.StopThinking()
 		m.AddSystemMessage(msg.Content)
 		return m, nil
+
+	case SkipStepMsg:
+		m.StopThinking()
+		m.AddSystemMessage("Skipping human intervention...")
+		if msg.Command_to_execute != nil {
+			m.PendingCommand = msg.Command_to_execute
+			output, err := runShellCommand(m.PendingCommand.Command)
+			cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
+			cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
+			cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
+			if err != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			} else {
+				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", cleanOutput))
+			}
+			m.StartThinking()
+			m.PendingCommand = nil
+			return m, tea.Batch(
+				func() tea.Msg {
+					response, cmdSuggestion, err := m.agent.SendMessage(
+						context.Background(), 
+						fmt.Sprintf("Command %s executed. Output: %s", msg.Command_to_execute.Command, output),
+					)
+					if err != nil {
+						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					if cmdSuggestion != nil {
+						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+					}
+					return LLMResponseMsg{Content: response}
+				},
+				thinkingTick(),
+			)
+		} else if msg.Function_to_execute != nil {
+			m.PendingFunctionCall = msg.Function_to_execute
+		}
+		m.PendingFunctionCall = nil
+		
 	}
 
 	if changed {

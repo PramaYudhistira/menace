@@ -12,6 +12,11 @@ type LoadingMsg struct {
 	Frame int
 }
 
+type SkipStepMsg struct {
+	Command_to_execute *CommandSuggestionMsg
+	Function_to_execute *FunctionCallMsg
+}
+
 // LLMResponseMsg represents a message from the LLM
 type LLMResponseMsg struct {
 	Content string
@@ -21,7 +26,7 @@ type LLMResponseMsg struct {
 type CommandSuggestionMsg struct {
 	Command string
 	Reason  string
-	Human_needed bool
+	AwaitingCommandApproval bool
 }
 
 // Represents a function call suggestion if the LLM returns one.

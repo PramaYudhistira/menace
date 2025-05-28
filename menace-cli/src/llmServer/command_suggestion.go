@@ -9,7 +9,7 @@ import (
 type CommandSuggestion struct {
 	Reason       string
 	Command      string
-	Human_needed string
+	AwaitingCommandApproval string
 }
 
 // Run this after every LLM response
@@ -31,9 +31,9 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	// Parse reason and command
 	reasonStart := strings.Index(content, "Reason: ")
 	commandStart := strings.Index(content, "Command: ")
-	humanNeededStart := strings.Index(content, "Human_needed: ")
+	awaitCmdApproval := strings.Index(content, "AwaitingCommandApproval: ")
 
-	if reasonStart == -1 || commandStart == -1 || humanNeededStart == -1 {
+	if reasonStart == -1 || commandStart == -1 || awaitCmdApproval == -1 {
 		return nil
 	}
 
@@ -41,14 +41,14 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	reason := strings.TrimSpace(content[reasonStart+8 : commandStart])
 
 	// Extract command (from "Command: " to end)
-	command := strings.TrimSpace(content[commandStart+8 : humanNeededStart])
+	command := strings.TrimSpace(content[commandStart+8 : awaitCmdApproval])
 
 	// Extract human needed (from "Human_needed: " to end)
-	humanNeeded := strings.TrimSpace(content[humanNeededStart+12:])
+	cmdApproval := strings.TrimSpace(content[awaitCmdApproval+24:])
 
 	return &CommandSuggestion{
 		Reason:  reason,
 		Command: command,
-		Human_needed: humanNeeded,
+		AwaitingCommandApproval: cmdApproval,
 	}
 }
