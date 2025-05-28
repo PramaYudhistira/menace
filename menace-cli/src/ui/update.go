@@ -363,7 +363,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SkipStepMsg:
 		m.StopThinking()
-		m.AddSystemMessage("Skipping human intervention...")
 		if msg.Command_to_execute != nil {
 			m.PendingCommand = msg.Command_to_execute
 			m.AddSystemMessage(fmt.Sprintf("Executing command: %s ...\n", m.PendingCommand.Command))
