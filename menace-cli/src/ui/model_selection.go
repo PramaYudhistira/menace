@@ -31,6 +31,13 @@ func (m *Model) ConfigView(termHeight, termWidth int) string {
 	var configContent strings.Builder
 	configContent.WriteString(HeaderStyle.Render("Select Model") + "\n\n")
 
+	// run shell script called "ollama list" and get the output
+	ollamas, err := runShellCommand("ollama list")
+	if err == nil {
+		ollamaList := strings.Split(ollamas, "\n")
+		AvailableModels = append(AvailableModels, ollamaList...)
+	}
+
 	for i, model := range AvailableModels {
 		style := lipgloss.NewStyle()
 		if i == m.ConfigCursor {
