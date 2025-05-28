@@ -127,7 +127,6 @@ func parseFunctionCall(response string) *FunctionCallMsg {
 	var parsed struct {
 		Name string                 `json:"name"`
 		Args map[string]interface{} `json:"args"`
-		AwaitingCommandApproval bool `json:"AwaitingCommandApproval"`
 	}
 	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
 		return nil

@@ -5,9 +5,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"context"
 	"fmt"
-
+	"encoding/json"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/mattn/go-runewidth"
@@ -514,22 +513,27 @@ func (m *Model) GetClipboardContent() string {
 	return string(output)
 }
 
-// Helper function to send a message to the agent and get a response. To be integrated in future
-func (m *Model) AIChat(msg string) tea.Msg {
-	response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), msg)
-	if err != nil {
-		return SystemMessage{Content: "Error: " + err.Error()}
-	}
-	if cmdSuggestion != nil {
-		return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
-	}
-	return LLMResponseMsg{Content: response}
-}
-
 func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
 	var output string
 	var err error
 	switch m.PendingFunctionCall.Name {
+	case "FileTree":
+		result, customErr := llmServer.CallRPC("file_tree", nil)
+		if customErr != nil {
+			m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
+			output = "Error: " + customErr.Error()
+		} else {
+			// convert result (JSON) to string
+			resultStr, parseErr := json.Marshal(result)
+			if parseErr != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", parseErr))
+				m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured during parsing the file tree. Error: %s. Please fix this and try again", parseErr), "")
+				output = "Error: " + parseErr.Error()
+			} else {
+				output = string(resultStr)
+			}
+		}
 	case "createPullRequest":
 		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
 		title, _ := m.PendingFunctionCall.Args["title"].(string)
