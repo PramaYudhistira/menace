@@ -64,6 +64,17 @@ func getSystemPrompt(shell string) string {
 	}
 	[/FUNCTION_CALL]
 
+	To get the file tree and see the entire file system, which is helpful for navigation, use the following function:
+
+	[FUNCTION_CALL]
+	Reason: user requested the entire file tree
+	AwaitingCommandApproval: false
+	Payload:
+	{
+		"name": "FileTree"
+	}
+	[/FUNCTION_CALL]
+
 	When using the CreateAndApplyDiffs function, the "diffs" array should contain objects with these fields:
 	- "Type": the type of change (0 = Add, 1 = Delete, 2 = Modify)
 	- "LineIndex": the 1-based line number to change
