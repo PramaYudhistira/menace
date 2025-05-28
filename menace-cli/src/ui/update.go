@@ -83,37 +83,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				var output string
 				var err error
 				if m.PendingFunctionCall != nil {
-					switch m.PendingFunctionCall.Name {
-					case "ReadFileWithLineNumbers":
-						path, _ := m.PendingFunctionCall.Args["path"].(string)
-						output, err = ReadFileWithLineNumbers(path)
-					case "CreateAndApplyDiffs":
-						path, _ := m.PendingFunctionCall.Args["path"].(string)
-						diffsRaw, _ := m.PendingFunctionCall.Args["diffs"].([]interface{})
-						var diffs []LineDiff
-						for _, d := range diffsRaw {
-							if diffMap, ok := d.(map[string]interface{}); ok {
-								diff := LineDiff{}
-								if t, ok := diffMap["Type"].(float64); ok {
-									diff.Type = DiffType(int(t))
-								}
-								if idx, ok := diffMap["LineIndex"].(float64); ok {
-									diff.LineIndex = int(idx)
-								}
-								if oldC, ok := diffMap["OldContent"].(string); ok {
-									diff.OldContent = oldC
-								}
-								if newC, ok := diffMap["NewContent"].(string); ok {
-									diff.NewContent = newC
-								}
-								diffs = append(diffs, diff)
-							}
-						}
-						err = CreateAndApplyDiffs(path, diffs)
-						if err == nil {
-							output = "Diffs applied successfully."
-						}
-					}
+					output, err = m.ExecuteFunctionCall(m.PendingFunctionCall)
 					m.PendingFunctionCall = nil
 				} else if m.PendingCommand != nil {
 					output, err = runShellCommand(m.PendingCommand.Command)
@@ -125,6 +95,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
 					cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
 					cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
+					if cleanOutput != "" {
+						cleanOutput = "The above task was done successfully"
+					}
 					m.AddSystemMessage(fmt.Sprintf("Output:\n%s", cleanOutput))
 				}
 				m.StartThinking()
@@ -361,52 +334,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if fnCall := parseFunctionCall(msg.Content); fnCall != nil {
 			m.PendingFunctionCall = fnCall
 			m.PendingCommand = nil
-			m.AwaitingCommandApproval = true
+			m.AwaitingCommandApproval = fnCall.AwaitingCommandApproval
 			m.StopThinking()
 			m.AddAgentMessage(fmt.Sprintf("Explanation: %s", fnCall.Reason))
-			// If it's a diff, show the diff preview
-			if fnCall.Name == "CreateAndApplyDiffs" {
-				path, _ := fnCall.Args["path"].(string)
-				diffsRaw, _ := fnCall.Args["diffs"].([]interface{})
-				var diffs []LineDiff
-				for _, d := range diffsRaw {
-					if diffMap, ok := d.(map[string]interface{}); ok {
-						diff := LineDiff{}
-						if t, ok := diffMap["Type"].(float64); ok {
-							diff.Type = DiffType(int(t))
-						}
-						if idx, ok := diffMap["LineIndex"].(float64); ok {
-							diff.LineIndex = int(idx)
-						}
-						if oldC, ok := diffMap["OldContent"].(string); ok {
-							diff.OldContent = oldC
-						}
-						if newC, ok := diffMap["NewContent"].(string); ok {
-							diff.NewContent = newC
-						}
-						diffs = append(diffs, diff)
-					}
-				}
-				// Format the diff for display
-				var preview strings.Builder
-				preview.WriteString(fmt.Sprintf("Proposed changes to %s:\n", path))
-				for _, d := range diffs {
-					preview.WriteString(FormatDiff(d) + "\n")
-				}
-				m.AddSystemMessage(preview.String())
-			} else if fnCall.Name == "createPullRequest" {
-				branchName, _ := fnCall.Args["branch_name"].(string)
-				title, _ := fnCall.Args["title"].(string)
-				summary, _ := fnCall.Args["summary"].(string)
-				err := llmServer.CreatePullRequest(branchName, title, summary)
-				if err != nil {
-					m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
-					m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
-				}
+
+			if fnCall.AwaitingCommandApproval {
+				m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
+				return m, nil
+			} else {
+				m.StartThinking()
+				return m, tea.Batch(
+					func() tea.Msg {
+						return SkipStepMsg{Command_to_execute: nil, Function_to_execute: fnCall}
+					},
+					thinkingTick(),
+				)
 			}
-			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
-			return m, nil
 		}
+		// Handle the case where no funciton or command is needed, just textual response
 		m.StopThinking()
 		m.AddAgentMessage(msg.Content)
 		return m, nil
@@ -421,6 +366,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.AddSystemMessage("Skipping human intervention...")
 		if msg.Command_to_execute != nil {
 			m.PendingCommand = msg.Command_to_execute
+			m.AddSystemMessage(fmt.Sprintf("Executing command: %s ...\n", m.PendingCommand.Command))
 			output, err := runShellCommand(m.PendingCommand.Command)
 			cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
 			cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
@@ -450,9 +396,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			)
 		} else if msg.Function_to_execute != nil {
 			m.PendingFunctionCall = msg.Function_to_execute
-		}
-		m.PendingFunctionCall = nil
-		
+			m.AddSystemMessage(fmt.Sprintf("Executing function: %s ...\n", msg.Function_to_execute.Name))
+			output, err := m.ExecuteFunctionCall(msg.Function_to_execute)
+			if err != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			} else {
+				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", output))
+			}
+			m.StartThinking()
+			m.PendingFunctionCall = nil
+			return m, tea.Batch(
+					func() tea.Msg {
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), fmt.Sprintf("Function %s executed. Output: %s", msg.Function_to_execute.Name, output))
+						if err != nil {
+							return SystemMessage{Content: "Error: " + err.Error()}
+						}
+						if cmdSuggestion != nil {
+							return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						}
+						return LLMResponseMsg{Content: response}
+					},
+				thinkingTick(),
+			)
+		}		
 	}
 
 	if changed {
@@ -460,4 +426,66 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+
+// Helper function to send a message to the agent and get a response. To be integrated in future
+func (m *Model) AIChat(msg string) tea.Msg {
+	response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), msg)
+	if err != nil {
+		return SystemMessage{Content: "Error: " + err.Error()}
+	}
+	if cmdSuggestion != nil {
+		return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+	}
+	return LLMResponseMsg{Content: response}
+}
+
+func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
+	var output string
+	var err error
+	switch m.PendingFunctionCall.Name {
+	case "createPullRequest":
+		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
+		title, _ := m.PendingFunctionCall.Args["title"].(string)
+		summary, _ := m.PendingFunctionCall.Args["summary"].(string)
+		err = llmServer.CreatePullRequest(branchName, title, summary)
+		if err != nil {
+			m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
+			output = "Error: " + err.Error()
+		} else {
+			output = "Pull request created successfully."
+		}
+	case "ReadFileWithLineNumbers":
+		path, _ := m.PendingFunctionCall.Args["path"].(string)
+		output, err = ReadFileWithLineNumbers(path)
+	case "CreateAndApplyDiffs":
+		path, _ := m.PendingFunctionCall.Args["path"].(string)
+		diffsRaw, _ := m.PendingFunctionCall.Args["diffs"].([]interface{})
+		var diffs []LineDiff
+		for _, d := range diffsRaw {
+			if diffMap, ok := d.(map[string]interface{}); ok {
+				diff := LineDiff{}
+				if t, ok := diffMap["Type"].(float64); ok {
+					diff.Type = DiffType(int(t))
+				}
+				if idx, ok := diffMap["LineIndex"].(float64); ok {
+					diff.LineIndex = int(idx)
+				}
+				if oldC, ok := diffMap["OldContent"].(string); ok {
+					diff.OldContent = oldC
+				}
+				if newC, ok := diffMap["NewContent"].(string); ok {
+					diff.NewContent = newC
+				}
+				diffs = append(diffs, diff)
+			}
+		}
+		err = CreateAndApplyDiffs(path, diffs)
+		if err == nil {
+			output = "Diffs applied successfully."
+		}
+	}
+	return output, err
 }

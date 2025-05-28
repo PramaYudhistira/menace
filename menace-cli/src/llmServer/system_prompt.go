@@ -54,6 +54,7 @@ func getSystemPrompt(shell string) string {
 
 	[FUNCTION_CALL]
 	Reason: <Explain why this function is needed>
+	AwaitingCommandApproval: true/false (true if the human needs to be involved, false if the command can be executed automatically)
 	Payload:
 	{
 		"name": "ReadFileWithLineNumbers",
@@ -72,6 +73,7 @@ func getSystemPrompt(shell string) string {
 	Example for	creating pull request:
 	[FUNCTION_CALL]
 	Reason: Create a pull request for the current branch
+	AwaitingCommandApproval: true
 	Payload:
 	{
 		"name": "createPullRequest",
@@ -87,6 +89,7 @@ func getSystemPrompt(shell string) string {
 
 	[FUNCTION_CALL]
 	Reason: Apply a set of line-level diffs (add/delete/modify) to "example.txt"
+	AwaitingCommandApproval: false
 	Payload:
 	{
 	"name": "CreateAndApplyDiffs",
