@@ -22,7 +22,7 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	end := strings.Index(response, "[/COMMAND_SUGGESTION]")
 
 	if start == -1 || end == -1 {
-		return nil // No command suggestion found
+		return nil
 	}
 
 	// Extract the content between the tags
