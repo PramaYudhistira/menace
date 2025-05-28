@@ -7,6 +7,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
+	"menace-go/llmServer"
+
 )
 
 // Update handles all incoming messages (keypresses, etc.).
@@ -73,7 +75,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-
+		// handle execution of command when awaiting command approval
 		if m.AwaitingCommandApproval {
 			switch msg.String() {
 			case "y":
@@ -81,37 +83,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				var output string
 				var err error
 				if m.PendingFunctionCall != nil {
-					switch m.PendingFunctionCall.Name {
-					case "ReadFileWithLineNumbers":
-						path, _ := m.PendingFunctionCall.Args["path"].(string)
-						output, err = ReadFileWithLineNumbers(path)
-					case "CreateAndApplyDiffs":
-						path, _ := m.PendingFunctionCall.Args["path"].(string)
-						diffsRaw, _ := m.PendingFunctionCall.Args["diffs"].([]interface{})
-						var diffs []LineDiff
-						for _, d := range diffsRaw {
-							if diffMap, ok := d.(map[string]interface{}); ok {
-								diff := LineDiff{}
-								if t, ok := diffMap["Type"].(float64); ok {
-									diff.Type = DiffType(int(t))
-								}
-								if idx, ok := diffMap["LineIndex"].(float64); ok {
-									diff.LineIndex = int(idx)
-								}
-								if oldC, ok := diffMap["OldContent"].(string); ok {
-									diff.OldContent = oldC
-								}
-								if newC, ok := diffMap["NewContent"].(string); ok {
-									diff.NewContent = newC
-								}
-								diffs = append(diffs, diff)
-							}
-						}
-						err = CreateAndApplyDiffs(path, diffs)
-						if err == nil {
-							output = "Diffs applied successfully."
-						}
-					}
+					output, err = m.ExecuteFunctionCall(m.PendingFunctionCall)
 					m.PendingFunctionCall = nil
 				} else if m.PendingCommand != nil {
 					output, err = runShellCommand(m.PendingCommand.Command)
@@ -123,6 +95,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
 					cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
 					cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
+					if cleanOutput != "" {
+						cleanOutput = "The above task was done successfully"
+					}
 					m.AddSystemMessage(fmt.Sprintf("Output:\n%s", cleanOutput))
 				}
 				m.StartThinking()
@@ -226,9 +201,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				changed = true
 			}
 
-		//Case for Enter key press
-		//Should send message to LLM
+		// Case for Enter key press -- START OF DEBUGGING
+		// Should send message to LLM
 		case tea.KeyEnter.String():
+			
 			if m.Input == "" {
 				return m, nil
 			}
@@ -246,14 +222,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ClearState()
 
 			// Send to agent and get response asynchronously via Bubble Tea command
+			// All the return types are re-entered into this large switch statement
+			// Check case CommandSuggestionMsg, LLMResponseMsg, and SystemMessage for more details
 			return m, tea.Batch(
 				func() tea.Msg {
-					response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), userInput)
+					response, cmdSuggestion, err := m.agent.SendMessage(
+						context.Background(), 
+						userInput,
+					)
+					// fmt.Println("userInput: ", userInput)
+					// fmt.Println("response: ", response)
 					if err != nil {
 						return SystemMessage{Content: "Error: " + err.Error()}
 					}
 					if cmdSuggestion != nil {
-						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						return CommandSuggestionMsg{
+							Command: cmdSuggestion.Command, 
+							Reason: cmdSuggestion.Reason, 
+							AwaitingCommandApproval: cmdSuggestion.AwaitingCommandApproval == "true",
+						}
 					}
 					return LLMResponseMsg{Content: response}
 				},
@@ -310,57 +297,61 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+	// Adding extra context prior to actually executing the commands, think of this as pre-run add-ons
 	case CommandSuggestionMsg:
 		m.PendingCommand = &msg
 		m.PendingFunctionCall = nil
-		m.AwaitingCommandApproval = true
+		m.AwaitingCommandApproval = msg.AwaitingCommandApproval
 		m.StopThinking()
 		m.AddAgentMessage(fmt.Sprintf("Explanation: %s", msg.Reason))
-		m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
-		return m, nil
+
+		// For git commands, the LLM gets extra context to guide it to its next step
+		if strings.HasPrefix(msg.Command, "git add") {
+			_, adds, _ := llmServer.HasChanges()
+			m.agent.AddToMessageChain(fmt.Sprintf("Your next step should be to commit, only if the user asks to commit or beyond (push or pr). Here are the changes so far: %s", adds), "")
+		} else if strings.HasPrefix(msg.Command, "git commit") {
+			m.agent.AddToMessageChain("Your next step should be to push, only if the user asks to push or beyond (pr)", "")
+		} else if strings.HasPrefix(msg.Command, "git push") {
+			m.agent.AddToMessageChain("Your next step should be to create a pull request, only if the user asks to create a pull request", "")
+		}
+
+		// Not all commands needs human intervention, so we can skip the command execution handled in case SkipStepMsg
+		if m.AwaitingCommandApproval {
+			m.AddSystemMessage(fmt.Sprintf("Command suggestion: %s\nExecute command? (y/n/e)", msg.Command))
+			return m, nil
+		} else {
+			return m, tea.Batch(
+				func() tea.Msg {
+					m.StartThinking()
+					return SkipStepMsg{Command_to_execute: &msg, Function_to_execute: nil}
+				},
+				thinkingTick(),
+			)
+		}
 
 	case LLMResponseMsg:
 		// Try to parse for a function call
 		if fnCall := parseFunctionCall(msg.Content); fnCall != nil {
 			m.PendingFunctionCall = fnCall
 			m.PendingCommand = nil
-			m.AwaitingCommandApproval = true
+			m.AwaitingCommandApproval = fnCall.AwaitingCommandApproval
 			m.StopThinking()
 			m.AddAgentMessage(fmt.Sprintf("Explanation: %s", fnCall.Reason))
-			// If it's a diff, show the diff preview
-			if fnCall.Name == "CreateAndApplyDiffs" {
-				path, _ := fnCall.Args["path"].(string)
-				diffsRaw, _ := fnCall.Args["diffs"].([]interface{})
-				var diffs []LineDiff
-				for _, d := range diffsRaw {
-					if diffMap, ok := d.(map[string]interface{}); ok {
-						diff := LineDiff{}
-						if t, ok := diffMap["Type"].(float64); ok {
-							diff.Type = DiffType(int(t))
-						}
-						if idx, ok := diffMap["LineIndex"].(float64); ok {
-							diff.LineIndex = int(idx)
-						}
-						if oldC, ok := diffMap["OldContent"].(string); ok {
-							diff.OldContent = oldC
-						}
-						if newC, ok := diffMap["NewContent"].(string); ok {
-							diff.NewContent = newC
-						}
-						diffs = append(diffs, diff)
-					}
-				}
-				// Format the diff for display
-				var preview strings.Builder
-				preview.WriteString(fmt.Sprintf("Proposed changes to %s:\n", path))
-				for _, d := range diffs {
-					preview.WriteString(FormatDiff(d) + "\n")
-				}
-				m.AddSystemMessage(preview.String())
+
+			if fnCall.AwaitingCommandApproval {
+				m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
+				return m, nil
+			} else {
+				m.StartThinking()
+				return m, tea.Batch(
+					func() tea.Msg {
+						return SkipStepMsg{Command_to_execute: nil, Function_to_execute: fnCall}
+					},
+					thinkingTick(),
+				)
 			}
-			m.AddSystemMessage(fmt.Sprintf("Function call suggestion: %s\nExecute function? (y/n/e)", fnCall.Name))
-			return m, nil
 		}
+		// Handle the case where no funciton or command is needed, just textual response
 		m.StopThinking()
 		m.AddAgentMessage(msg.Content)
 		return m, nil
@@ -369,6 +360,64 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.StopThinking()
 		m.AddSystemMessage(msg.Content)
 		return m, nil
+
+	case SkipStepMsg:
+		m.StopThinking()
+		if msg.Command_to_execute != nil {
+			m.PendingCommand = msg.Command_to_execute
+			m.AddSystemMessage(fmt.Sprintf("Executing command: %s ...\n", m.PendingCommand.Command))
+			output, err := runShellCommand(m.PendingCommand.Command)
+			cleanOutput := strings.ReplaceAll(output, "\r\n", "\n")
+			cleanOutput = strings.ReplaceAll(cleanOutput, "\r", "\n")
+			cleanOutput = strings.ReplaceAll(cleanOutput, "\t", "    ")
+			if err != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			} else {
+				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", cleanOutput))
+			}
+			m.StartThinking()
+			m.PendingCommand = nil
+			return m, tea.Batch(
+				func() tea.Msg {
+					response, cmdSuggestion, err := m.agent.SendMessage(
+						context.Background(), 
+						fmt.Sprintf("Command %s executed. Output: %s", msg.Command_to_execute.Command, output),
+					)
+					if err != nil {
+						return SystemMessage{Content: "Error: " + err.Error()}
+					}
+					if cmdSuggestion != nil {
+						return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+					}
+					return LLMResponseMsg{Content: response}
+				},
+				thinkingTick(),
+			)
+		} else if msg.Function_to_execute != nil {
+			m.PendingFunctionCall = msg.Function_to_execute
+			m.AddSystemMessage(fmt.Sprintf("Executing function: %s ...\n", msg.Function_to_execute.Name))
+			output, err := m.ExecuteFunctionCall(msg.Function_to_execute)
+			if err != nil {
+				m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			} else {
+				m.AddSystemMessage(fmt.Sprintf("Output:\n%s", output))
+			}
+			m.StartThinking()
+			m.PendingFunctionCall = nil
+			return m, tea.Batch(
+					func() tea.Msg {
+						response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), fmt.Sprintf("Function %s executed. Output: %s", msg.Function_to_execute.Name, output))
+						if err != nil {
+							return SystemMessage{Content: "Error: " + err.Error()}
+						}
+						if cmdSuggestion != nil {
+							return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+						}
+						return LLMResponseMsg{Content: response}
+					},
+				thinkingTick(),
+			)
+		}		
 	}
 
 	if changed {

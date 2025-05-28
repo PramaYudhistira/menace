@@ -7,8 +7,9 @@ import (
 // CommandSuggestion is a struct that contains the reason and command from the LLM response
 // This is used to parse the LLM response and extract the command suggestion
 type CommandSuggestion struct {
-	Reason  string
-	Command string
+	Reason       string
+	Command      string
+	AwaitingCommandApproval string
 }
 
 // Run this after every LLM response
@@ -21,7 +22,7 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	end := strings.Index(response, "[/COMMAND_SUGGESTION]")
 
 	if start == -1 || end == -1 {
-		return nil // No command suggestion found
+		return nil
 	}
 
 	// Extract the content between the tags
@@ -30,8 +31,9 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	// Parse reason and command
 	reasonStart := strings.Index(content, "Reason: ")
 	commandStart := strings.Index(content, "Command: ")
+	awaitCmdApproval := strings.Index(content, "AwaitingCommandApproval: ")
 
-	if reasonStart == -1 || commandStart == -1 {
+	if reasonStart == -1 || commandStart == -1 || awaitCmdApproval == -1 {
 		return nil
 	}
 
@@ -39,10 +41,14 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	reason := strings.TrimSpace(content[reasonStart+8 : commandStart])
 
 	// Extract command (from "Command: " to end)
-	command := strings.TrimSpace(content[commandStart+8:])
+	command := strings.TrimSpace(content[commandStart+8 : awaitCmdApproval])
+
+	// Extract human needed (from "Human_needed: " to end)
+	cmdApproval := strings.TrimSpace(content[awaitCmdApproval+24:])
 
 	return &CommandSuggestion{
 		Reason:  reason,
 		Command: command,
+		AwaitingCommandApproval: cmdApproval,
 	}
 }

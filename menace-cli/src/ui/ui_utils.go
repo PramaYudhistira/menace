@@ -12,6 +12,11 @@ type LoadingMsg struct {
 	Frame int
 }
 
+type SkipStepMsg struct {
+	Command_to_execute *CommandSuggestionMsg
+	Function_to_execute *FunctionCallMsg
+}
+
 // LLMResponseMsg represents a message from the LLM
 type LLMResponseMsg struct {
 	Content string
@@ -21,11 +26,13 @@ type LLMResponseMsg struct {
 type CommandSuggestionMsg struct {
 	Command string
 	Reason  string
+	AwaitingCommandApproval bool
 }
 
 // Represents a function call suggestion if the LLM returns one.
 type FunctionCallMsg struct {
 	Name   string
+	AwaitingCommandApproval bool
 	Reason string
 	Args   map[string]interface{}
 }
@@ -100,13 +107,15 @@ func parseFunctionCall(response string) *FunctionCallMsg {
 
 	reasonStart := strings.Index(content, "Reason:")
 	payloadStart := strings.Index(content, "Payload:")
-	if reasonStart == -1 || payloadStart == -1 {
+	approvalStart := strings.Index(content, "AwaitingCommandApproval:")
+	if reasonStart == -1 || payloadStart == -1 || approvalStart == -1 {
 		return nil
 	}
 
-	reason := strings.TrimSpace(content[reasonStart+len("Reason:") : payloadStart])
+	reason := strings.TrimSpace(content[reasonStart+len("Reason:") : approvalStart])
+	cmdApproval := strings.TrimSpace(content[approvalStart+len("AwaitingCommandApproval:") : payloadStart]) == "true"
 	payload := strings.TrimSpace(content[payloadStart+len("Payload:"):])
-
+	
 	// Find the JSON object in the payload
 	jsonStart := strings.Index(payload, "{")
 	jsonEnd := strings.LastIndex(payload, "}")
@@ -118,6 +127,7 @@ func parseFunctionCall(response string) *FunctionCallMsg {
 	var parsed struct {
 		Name string                 `json:"name"`
 		Args map[string]interface{} `json:"args"`
+		AwaitingCommandApproval bool `json:"AwaitingCommandApproval"`
 	}
 	if err := json.Unmarshal([]byte(jsonStr), &parsed); err != nil {
 		return nil
@@ -126,6 +136,7 @@ func parseFunctionCall(response string) *FunctionCallMsg {
 	return &FunctionCallMsg{
 		Name:   parsed.Name,
 		Reason: reason,
+		AwaitingCommandApproval: cmdApproval,
 		Args:   parsed.Args,
 	}
 }

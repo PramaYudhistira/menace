@@ -8,6 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"context"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/openai"
 )
 
 type PullRequest struct {
@@ -17,16 +20,16 @@ type PullRequest struct {
 	Base  string `json:"base"`
 }
 
-func hasChanges() (bool, error) {
+func HasChanges() (bool, string, error) {
 	cmd := exec.Command("git", "status", "--porcelain")
 	output, err := cmd.Output()
 	if err != nil {
-		return false, fmt.Errorf("failed to check git status: %v", err)
+		return false, "", fmt.Errorf("failed to check git status: %v", err)
 	}
-	return len(output) > 0, nil
+	return len(output) > 0, string(output), nil
 }
 
-func createPullRequest(branchName string) error {
+func CreatePullRequest(branchName string, title string, summary string) error {
 	// Get GitHub token from environment
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -51,8 +54,8 @@ func createPullRequest(branchName string) error {
 
 	// Create pull request
 	pr := PullRequest{
-		Title: "Auto PR by test program",
-		Body:  "This is an automated pull request created by the test program.",
+		Title: title,
+		Body:  summary,
 		Head:  branchName,
 		Base:  "main",
 	}
@@ -89,11 +92,10 @@ func createPullRequest(branchName string) error {
 		return fmt.Errorf("failed to create PR: %s", errorBody["message"])
 	}
 
-	fmt.Println("Pull request created successfully!")
 	return nil
 }
 
-func pushToGitHub() error {
+func PushToGitHub(commit_message string) error {
 	//are we in a git repository?
 	cmd := exec.Command("git", "rev-parse", "--is-inside-work-tree")
 	if err := cmd.Run(); err != nil {
@@ -110,13 +112,13 @@ func pushToGitHub() error {
 	fmt.Printf("Current branch: %s\n", branchName)
 
 	// Check if there are any changes
-	hasChanges, err := hasChanges()
+	hasChanges, _, err := HasChanges()
 	if err != nil {
 		return fmt.Errorf("failed to check for changes: %v", err)
 	}
 
 	if !hasChanges {
-		fmt.Println("No changes to commit. Proceeding with push...")
+		fmt.Println("No changes to commit. Skipping push.")
 		return nil
 	} else {
 		// Add all changes
@@ -127,7 +129,7 @@ func pushToGitHub() error {
 
 		// Commit changes
 		fmt.Println("Committing changes...")
-		cmd = exec.Command("git", "commit", "-m", "Auto-commit by test program")
+		cmd = exec.Command("git", "commit", "-m", commit_message)
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("failed to commit changes: %v", err)
 		}
@@ -144,7 +146,7 @@ func pushToGitHub() error {
 	// Only create pull request if not on main branch
 	if branchName != "main" {
 		fmt.Println("Creating pull request...")
-		if err := createPullRequest(branchName); err != nil {
+		if err := CreatePullRequest(branchName, "Auto PR by test program", "This is an automated pull request created by the test program."); err != nil {
 			return fmt.Errorf("failed to create pull request: %v", err)
 		}
 	} else {
@@ -154,4 +156,49 @@ func pushToGitHub() error {
 	return nil
 }
 
+type Add_check struct {
+	Is_conversation_relevant_to_github string `json:"is_conversation_relevant_to_github"`
+	Reason                             string `json:"reason"`
+	Add                                string `json:"add"`
+}
 
+type Commit_check struct {
+	Is_commit_needed string `json:"is_commit_needed"`
+	Reason           string `json:"reason"`
+	Commit_message   string `json:"commit_message"`
+}
+
+type Pull_request_check struct {
+	Is_pull_request_needed string `json:"is_pull_request_needed"`
+	Reason                  string `json:"reason"`
+}
+
+func isolated_single_message_to_ai(message string) (string, error) {
+	llm, err := openai.New(
+		openai.WithToken(os.Getenv("OPENAI_API_KEY")),
+		openai.WithModel("o4-mini-2025-04-16"),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to create OpenAI client: %v", err)
+	}
+
+	resp, err := llm.GenerateContent(context.Background(), []llms.MessageContent{
+		{
+			Role:  llms.ChatMessageTypeSystem,
+			Parts: []llms.ContentPart{llms.TextContent{Text: message}},
+		},
+	}, llms.WithTemperature(1))
+
+	if err != nil {
+		return "", err
+	}
+	return resp.Choices[0].Content, nil
+}
+
+func convert_str_to_json(str string, json_format interface{}) error {
+	err := json.Unmarshal([]byte(str), json_format)
+	if err != nil {
+		return err
+	}
+	return err
+}
