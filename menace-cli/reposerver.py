@@ -24,4 +24,5 @@ def file_tree():
 
 if __name__ == "__main__":
     # listens on port 5974
-    app.run(host="0.0.0.0", port=5974)
+    print("FLASK SERVER READY")
+    app.run(host="0.0.0.0", port=5974, debug=False)
