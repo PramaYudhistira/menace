@@ -1,4 +1,5 @@
-*/bin/menace-go*
+/bin/menace-go*
 *.DS_Store
 .env
 venv/
+*menace-go*
