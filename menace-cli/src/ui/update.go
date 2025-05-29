@@ -239,7 +239,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return CommandSuggestionMsg{
 							Command: cmdSuggestion.Command, 
 							Reason: cmdSuggestion.Reason, 
-							AwaitingCommandApproval: cmdSuggestion.AwaitingCommandApproval == "true",
+							AwaitingCommandApproval: cmdSuggestion.AwaitingCommandApproval,
 						}
 					}
 					return LLMResponseMsg{Content: response}
