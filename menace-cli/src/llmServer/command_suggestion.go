@@ -4,12 +4,10 @@ import (
 	"strings"
 )
 
-// CommandSuggestion is a struct that contains the reason and command from the LLM response
-// This is used to parse the LLM response and extract the command suggestion
 type CommandSuggestion struct {
-	Reason       string
-	Command      string
-	AwaitingCommandApproval string
+	Reason string
+	Command string
+	AwaitingCommandApproval bool
 }
 
 // Run this after every LLM response
@@ -49,6 +47,6 @@ func parseCommandSuggestion(response string) *CommandSuggestion {
 	return &CommandSuggestion{
 		Reason:  reason,
 		Command: command,
-		AwaitingCommandApproval: cmdApproval,
+		AwaitingCommandApproval: cmdApproval == "true",
 	}
 }
