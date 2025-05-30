@@ -75,6 +75,35 @@ func getSystemPrompt(shell string) string {
 	}
 	[/FUNCTION_CALL]
 
+	To get the content of a file, use the following function:
+
+	[FUNCTION_CALL]
+	Reason: user requested the content of a file
+	AwaitingCommandApproval: false
+	Payload:
+	{
+		"name": "GetFileContent",
+		"args": {
+			"path": "example.py"
+		}
+	}
+	[/FUNCTION_CALL]
+
+	To find symbols (functions, classes, variables, etc.) in the codebase, use the following function:
+
+	[FUNCTION_CALL]
+	Reason: user requested to find symbols in the codebase
+	AwaitingCommandApproval: false
+	Payload:
+	{
+		"name": "FindSymbols",
+		"args": {
+			"symbol": "function_name",
+			"symbol_type": "function"
+		}
+	}
+	[/FUNCTION_CALL]
+
 	When using the CreateAndApplyDiffs function, the "diffs" array should contain objects with these fields:
 	- "Type": the type of change (0 = Add, 1 = Delete, 2 = Modify)
 	- "LineIndex": the 1-based line number to change
@@ -138,7 +167,7 @@ func getSystemPrompt(shell string) string {
 	- If you are unable to make the edit, ask the user to do it manually.
 
 	Do NOT suggest opening files in editors like Notepad, nano, vim, or any GUI or interactive editor.
-	If you need to read, write, or modify a file, ALWAYS use a [FUNCTION_CALL] block (using either ReadFileWithLineNumbers or CreateAndApplyDiffs).
+	If you need to read, write, or modify a file, ALWAYS use a [FUNCTION_CALL] block.
 	Never use shell commands for file reading or writing—use function calls instead.
 	Only use shell commands for tasks that cannot be accomplished via function calls.
 

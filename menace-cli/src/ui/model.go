@@ -513,27 +513,41 @@ func (m *Model) GetClipboardContent() string {
 	return string(output)
 }
 
+// runs RPC call and then two-step parses result into string
+func helperRPC(route string, args map[string]interface{}, m *Model) (string, error) {
+	var output string
+	result, customErr := llmServer.CallRPC(route, args)
+	if customErr != nil {
+		m.AddSystemMessage(fmt.Sprintf("Error: %s", customErr))
+		m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", customErr), "")
+		output = "Error: " + customErr.Error()
+	} else {
+		resultStr, parseErr := json.Marshal(result)
+		if parseErr != nil {
+			m.AddSystemMessage(fmt.Sprintf("Error: %s", parseErr))
+			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured during parsing the file content. Error: %s. Please fix this and try again", parseErr), "")
+			output = "Error: " + parseErr.Error()
+			return output, parseErr
+		} else {
+			output = string(resultStr)
+		}
+	}
+	return output, customErr
+}
+
 func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
 	var output string
 	var err error
 	switch m.PendingFunctionCall.Name {
+	case "GetFileContent":
+		path, _ := m.PendingFunctionCall.Args["path"].(string)
+		output, err = helperRPC("get_file_content", map[string]interface{}{"path": path}, m)
+	case "FindSymbols":
+		symbol, _ := m.PendingFunctionCall.Args["symbol"].(string)
+		symbolType, _ := m.PendingFunctionCall.Args["symbol_type"].(string)
+		output, err = helperRPC("find_symbols", map[string]interface{}{"symbol": symbol, "symbol_type": symbolType}, m)
 	case "FileTree":
-		result, customErr := llmServer.CallRPC("file_tree", nil)
-		if customErr != nil {
-			m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
-			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
-			output = "Error: " + customErr.Error()
-		} else {
-			// convert result (JSON) to string
-			resultStr, parseErr := json.Marshal(result)
-			if parseErr != nil {
-				m.AddSystemMessage(fmt.Sprintf("Error: %s", parseErr))
-				m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured during parsing the file tree. Error: %s. Please fix this and try again", parseErr), "")
-				output = "Error: " + parseErr.Error()
-			} else {
-				output = string(resultStr)
-			}
-		}
+		output, err = helperRPC("file_tree", nil, m)
 	case "createPullRequest":
 		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
 		title, _ := m.PendingFunctionCall.Args["title"].(string)
