@@ -2,6 +2,8 @@
 
 const { spawn } = require("child_process");
 const path = require("path");
+const fs = require("fs");
+const { execSync } = require("child_process");
 process.env.FLASK_READY = "false";
 process.env.PORT = 5974;
 
@@ -30,14 +32,6 @@ const child = spawn(binPath, {
     stdio: 'inherit',
 });
 
-const flaskBinary = path.join(__dirname, '..', 'dist', 'reposerver'); // or 'reposerver.exe' for Windows
-
-// Spin up Flask server
-console.log("Starting up... (this may take a few seconds)")
-const flaskServer = spawn(flaskBinary, {
-  stdio: ['inherit', 'ignore', 'ignore'],
-});
-
 // Handle any errors
 child.on("error", (err) => {
     console.error(`Failed to start process: ${err.message}`);
@@ -47,25 +41,30 @@ child.on("error", (err) => {
 // Handle when the child process exits
 child.on('close', (code) => {
     console.log(`Child process exited with code ${code}`);
-    flaskServer.kill();
     process.exit(1);
 });
 
-// Handle Flask server errors - uncomment below for debugging and set 
-// flaskServer.stderr.on('data', (data) => {
-//     const msg = data.toString();
-//     process.stderr.write(msg);
-//     console.log(msg);  // This will show us the actual error
-// });
 
+// check if a venv is present
+const venvPath = path.join(__dirname, '..', 'venv');
+if (!fs.existsSync(venvPath)) {
+    console.log("Venv not found, creating...")
+    execSync('python -m venv venv');
+}
 
-flaskServer.on('error', (err) => {
-  process.env.FLASK_READY = "false";
-  console.error(`Failed to ping flask server: ${err.message}`);
-});
-
-flaskServer.on('close', (code) => {
-  console.log(`Flask server exited with code ${code}`);
-  child.kill();
+// 2. Install deps using venv pip
+const pipPath = path.join(venvPath, process.platform === "win32" ? "Scripts" : "bin", "pip"); // Windows: use "Scripts" instead of "bin" for pip
+try {
+  execSync(`${pipPath} install -r requirements.txt`, { stdio: ["inherit", "ignore", "ignore"] });
+} catch (e) {
+  console.error("Failed to install Python packages:", e);
   process.exit(1);
-});
+}
+
+// test if the venv is working
+// const kitPath = path.join(venvPath, "bin", "kit");
+// try {
+//   execSync(`${kitPath} file-tree ${__dirname}`, { stdio: "inherit" });
+// } catch (e) {
+//   console.error("Failed to run kit file-tree:", e);
+// }
