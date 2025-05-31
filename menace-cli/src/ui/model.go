@@ -2,6 +2,7 @@ package ui
 
 import (
 	"menace-go/llmServer"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -19,6 +20,9 @@ type Model struct {
 	agent  *llmServer.Agent
 	Width  int
 	Height int
+
+	// InitiatedRPC is true if the RPC call has been initiated
+	InitiatedRPC bool
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
 	// Cursor position in input (column, row)
@@ -515,6 +519,24 @@ func (m *Model) GetClipboardContent() string {
 
 // runs RPC call and then two-step parses result into string
 func helperRPC(route string, args map[string]interface{}, m *Model) (string, error) {
+	var isFlaskReady = os.Getenv("FLASK_READY") == "true"
+	if !isFlaskReady {
+		if !m.InitiatedRPC {
+			// initialize the repository using the current working directory
+			wd, err := os.Getwd()
+			if err != nil {
+				return "", fmt.Errorf("failed to get current working directory: %v", err)
+			}
+			_, err = llmServer.CallRPC("init", map[string]interface{}{"path": wd})
+
+			if err != nil {
+				return "", fmt.Errorf("server failed to initialize repository: %v", err)
+			}
+			m.InitiatedRPC = true
+		} else {
+			return "This functionality is not available just yet. Please wait a few seconds and try again", fmt.Errorf("this functionality is not available just yet. Please wait a few seconds and try again")
+		}
+	}
 	var output string
 	result, customErr := llmServer.CallRPC(route, args)
 	if customErr != nil {

@@ -10,3 +10,4 @@
 
 ## Fast Start
 - spin up menace but block CasedKit functions until the server spins up
+- Handle multiple menaces thru port handling

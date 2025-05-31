@@ -39,17 +39,6 @@ func NewAgent(apiKey string) (*Agent, error) {
 
 	ctx := context.Background()
 
-	// initialize the repository using the current working directory
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current working directory: %v", err)
-	}
-	_, err = CallRPC("init", map[string]interface{}{"path": wd})
-
-	if err != nil {
-		return nil, fmt.Errorf("server failed to initialize repository: %v", err)
-	}
-
 	return &Agent{
 		llm:      llm,
 		shell:    ModelFactory{}.DetectShell(),

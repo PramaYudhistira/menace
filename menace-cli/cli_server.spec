@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['reposerver.py'],
+    ['cli_server.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -28,7 +28,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='reposerver',
+    name='cli_server',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

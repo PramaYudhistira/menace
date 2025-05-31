@@ -1,5 +1,7 @@
 from kit import Repository
 from flask import Flask, request, jsonify
+import os
+import time
 
 app = Flask(__name__)
 repo = None
@@ -47,6 +49,12 @@ def get_file_content():
     return jsonify({"Result": result, "Status": 200}), 200
 
 if __name__ == "__main__":
+    try:
     # listens on port 5974
-    print("FLASK SERVER READY")
-    app.run(host="0.0.0.0", port=5974, debug=False)
+        os.environ["FLASK_READY"] = "true"
+        app.run(host="0.0.0.0", port=5974, debug=False)
+    except Exception as e:
+        print(f"Error: {e}")
+        os.environ["FLASK_READY"] = "false"
+        time.sleep(1)
+        app.run(host="0.0.0.0", port=5974, debug=False)
