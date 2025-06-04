@@ -1,1 +1,1 @@
-cased-kit
+cased-kit[all]>=0.1.4

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -130,13 +131,46 @@ func PrintDiffs(diffs []LineDiff) {
 
 // Runs a shell command
 func runShellCommand(command string) (string, error) {
+	// Check if the command is a kit command
+	if strings.HasPrefix(command, "kit ") {
+		venvPath := os.Getenv("MENACE_VENV_PATH")
+		if venvPath == "" {
+			return "", fmt.Errorf("MENACE_VENV_PATH not set")
+		}
 
-	// check if the command is a function call
-	// if strings.HasPrefix(command, "kit ") {
-	// 	command = fmt.Sprintf("%s %s", os.Getenv("MENACE_VENV_PATH"), command)
-	// }
-	
+		// Get the kit executable path
+		kitPath := filepath.Join(venvPath, "bin", "kit")
+		if runtime.GOOS == "windows" {
+			kitPath = filepath.Join(venvPath, "Scripts", "kit.exe")
+		}
 
+		// Split the command to get kit subcommand and arguments
+		parts := strings.Fields(command)
+		if len(parts) < 2 {
+			return "", fmt.Errorf("invalid kit command format")
+		}
+
+		// Create the command with kit path and remaining arguments
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command(kitPath, parts[1:]...)
+		} else {
+			cmd = exec.Command(kitPath, parts[1:]...)
+		}
+
+		// Set up environment
+		cmd.Env = append(os.Environ(), fmt.Sprintf("PATH=%s:%s",
+			filepath.Join(venvPath, "bin"),
+			os.Getenv("PATH")))
+
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("kit command failed: %v\nOutput: %s", err, string(output))
+		}
+		return string(output), nil
+	}
+
+	// Handle regular shell commands
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", command)
