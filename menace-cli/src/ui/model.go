@@ -120,18 +120,33 @@ func (m *Model) InsertCharacter(character string) {
 	m.Input = strings.Join(lines, "\n")
 }
 
+func (m *Model) ReduceMessageContext(message string) {
+	// if the message chain is too long, truncate it
+	if len(m.Messages) > 20 {
+		m.Messages = m.Messages[len(m.Messages)-20:]
+		for i, msg := range m.Messages {
+			if i < 10 && len(strings.Split(msg.Content, "\n")) > 100 {
+				m.Messages[i].Content = strings.Join(strings.Split(msg.Content, "\n")[:100], "\n")
+			}
+		}
+	}
+}
+
 // Adds a user message to the chat history
 func (m *Model) AddUserMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "user", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 // Adds a system message to the model chat history
 func (m *Model) AddSystemMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "system", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 func (m *Model) AddAgentMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "llm", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 // Handle mouse scrolling
