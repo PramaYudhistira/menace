@@ -26,8 +26,8 @@ if (!process.env.MENACE_VENV_PATH) {
         execSync(`"${pipPath}" install --upgrade setuptools wheel`, 
             { stdio: ["inherit", "inherit", "inherit"] });
 
-        // Install cased-kit with all extras in development mode
-        execSync(`"${pipPath}" install -e "git+https://github.com/cased/cased-kit.git#egg=cased-kit[all]"`, 
+        // Install requirements from requirements.txt
+        execSync(`"${pipPath}" install -r "${requirementsPath}"`, 
             { stdio: ["inherit", "inherit", "inherit"] });
 
         // install completion using the full path to kit
