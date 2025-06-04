@@ -1,6 +1,5 @@
-/bin/menace-go*
-*.DS_Store
-.env
+/bin/menace-go-darwin-arm64
+/bin/menace-go-darwin
 venv/
 build/
 
@@ -37,3 +36,5 @@ Thumbs.db
 
 reposerver
 !reposerver.spec
+
+.venv

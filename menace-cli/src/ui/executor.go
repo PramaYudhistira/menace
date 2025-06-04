@@ -130,6 +130,13 @@ func PrintDiffs(diffs []LineDiff) {
 
 // Runs a shell command
 func runShellCommand(command string) (string, error) {
+
+	// check if the command is a function call
+	// if strings.HasPrefix(command, "kit ") {
+	// 	command = fmt.Sprintf("%s %s", os.Getenv("MENACE_VENV_PATH"), command)
+	// }
+	
+
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", command)

@@ -64,45 +64,44 @@ func getSystemPrompt(shell string) string {
 	}
 	[/FUNCTION_CALL]
 
+	For the proceeding kit commands, do not use . to represent current directory, use the full path.
 	To get the file tree and see the entire file system, which is helpful for navigation, use the following function:
 
-	[FUNCTION_CALL]
+	[COMMAND_SUGGESTION]
 	Reason: user requested the entire file tree
 	AwaitingCommandApproval: false
-	Payload:
-	{
-		"name": "FileTree"
-	}
-	[/FUNCTION_CALL]
+	Command: kit file-tree <path_to_repo>
+	[/COMMAND_SUGGESTION]
 
-	To get the content of a file, use the following function:
+	for example:
+	[COMMAND_SUGGESTION]
+	Reason: user requested the entire file tree
+	AwaitingCommandApproval: false
+	Command: kit file-tree /Users/nawidt/Documents/menace/menace-cli
+	[/COMMAND_SUGGESTION]
 
-	[FUNCTION_CALL]
+	To get the content of a file, use the following function. Here is an example:
+
+	[COMMAND_SUGGESTION]
 	Reason: user requested the content of a file
 	AwaitingCommandApproval: false
-	Payload:
-	{
-		"name": "GetFileContent",
-		"args": {
-			"path": "example.py"
-		}
-	}
-	[/FUNCTION_CALL]
+	Command: kit file-content <path_to_repo> <path_to_file>
+	[/COMMAND_SUGGESTION]
+
+	for example:
+	[COMMAND_SUGGESTION]
+	Reason: user requested the content of a file
+	AwaitingCommandApproval: false
+	Command: kit file-content /Users/nawidt/Documents/menace/menace-cli /Users/nawidt/Documents/menace/menace-cli/ui/executor.go
+	[/COMMAND_SUGGESTION]
 
 	To find symbols (functions, classes, variables, etc.) in the codebase, use the following function:
 
-	[FUNCTION_CALL]
+	[COMMAND_SUGGESTION]
 	Reason: user requested to find symbols in the codebase
 	AwaitingCommandApproval: false
-	Payload:
-	{
-		"name": "FindSymbols",
-		"args": {
-			"symbol": "function_name",
-			"symbol_type": "function"
-		}
-	}
-	[/FUNCTION_CALL]
+	Command: kit find-symbols /Users/nawidt/Documents/menace/menace-cli "function_name"
+	[/COMMAND_SUGGESTION]
 
 	When using the CreateAndApplyDiffs function, the "diffs" array should contain objects with these fields:
 	- "Type": the type of change (0 = Add, 1 = Delete, 2 = Modify)

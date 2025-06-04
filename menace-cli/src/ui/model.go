@@ -561,15 +561,15 @@ func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
 	var output string
 	var err error
 	switch m.PendingFunctionCall.Name {
-	case "GetFileContent":
-		path, _ := m.PendingFunctionCall.Args["path"].(string)
-		output, err = helperRPC("get_file_content", map[string]interface{}{"path": path}, m)
-	case "FindSymbols":
-		symbol, _ := m.PendingFunctionCall.Args["symbol"].(string)
-		symbolType, _ := m.PendingFunctionCall.Args["symbol_type"].(string)
-		output, err = helperRPC("find_symbols", map[string]interface{}{"symbol": symbol, "symbol_type": symbolType}, m)
-	case "FileTree":
-		output, err = helperRPC("file_tree", nil, m)
+	// case "GetFileContent":
+	// 	path, _ := m.PendingFunctionCall.Args["path"].(string)
+	// 	output, err = helperRPC("get_file_content", map[string]interface{}{"path": path}, m)
+	// case "FindSymbols":
+	// 	symbol, _ := m.PendingFunctionCall.Args["symbol"].(string)
+	// 	symbolType, _ := m.PendingFunctionCall.Args["symbol_type"].(string)
+	// 	output, err = helperRPC("find_symbols", map[string]interface{}{"symbol": symbol, "symbol_type": symbolType}, m)
+	// case "FileTree":
+	// 	output, err = helperRPC("file_tree", nil, m)
 	case "createPullRequest":
 		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
 		title, _ := m.PendingFunctionCall.Args["title"].(string)
