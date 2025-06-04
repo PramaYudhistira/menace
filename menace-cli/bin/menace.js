@@ -18,25 +18,31 @@ if (!process.env.MENACE_VENV_PATH) {
             process.platform === "win32" ? "Scripts\\pip" : "bin/pip");
         const requirementsPath = path.join(__dirname, "..", "requirements.txt");
         
+        console.log("Ensuring pip is up to date...");
         // First upgrade pip
         execSync(`"${pipPath}" install --upgrade pip`, 
-            { stdio: ["inherit", "inherit", "inherit"] });
+            { stdio: ["inherit", "ignore", "ignore"] });
             
+        console.log("Installing build tools...");
         // Install build tools first
         execSync(`"${pipPath}" install --upgrade setuptools wheel`, 
-            { stdio: ["inherit", "inherit", "inherit"] });
+            { stdio: ["inherit", "ignore", "ignore"] });
 
+        console.log("Installing requirements...");
         // Install requirements from requirements.txt
         execSync(`"${pipPath}" install -r "${requirementsPath}"`, 
-            { stdio: ["inherit", "inherit", "inherit"] });
+            { stdio: ["inherit", "ignore", "ignore"] });
 
+        console.log("Installing last bit of dependencies...");
         // install completion using the full path to kit
         const kitPath = path.join(process.env.MENACE_VENV_PATH, 'bin', 'kit');
         execSync(`"${kitPath}" --install-completion`, 
-            { stdio: ["inherit", "inherit", "inherit"] });
+            { stdio: ["inherit", "ignore", "ignore"] });
+        console.log("Dependencies installed successfully");
             
         // Add kit to PATH
         process.env.PATH = `${path.join(process.env.MENACE_VENV_PATH, 'bin')}:${process.env.PATH}`;
+        console.log("PATH created successfully");
     } catch (e) {
         console.error("Failed to install Python packages:", e);
         process.exit(1);
@@ -46,6 +52,7 @@ if (!process.env.MENACE_VENV_PATH) {
     const shellConfig = process.env.SHELL?.includes('zsh') ? '~/.zshrc' : '~/.bashrc';
     const exportCmd = `echo 'export MENACE_VENV_PATH="${venvPath}"' >> ${shellConfig}`;
     execSync(exportCmd);
+    console.log("Shell config updated successfully");
 }
 
 // Instead of using source (which doesn't work in Node), add the venv bin to PATH
