@@ -1,5 +1,40 @@
-/bin/menace-go*
-*.DS_Store
-.env
+/bin/menace-go-darwin-arm64
+/bin/menace-go-darwin
 venv/
-*menace-go*
+build/
+
+# Build and distribution directories
+dist/
+
+# Node.js
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# OS generated files
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment files
+.env.local
+.env.*.local
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+reposerver
+!reposerver.spec
+
+.venv

@@ -64,6 +64,45 @@ func getSystemPrompt(shell string) string {
 	}
 	[/FUNCTION_CALL]
 
+	For the proceeding kit commands, do not use . to represent current directory, use the full path.
+	To get the file tree and see the entire file system, which is helpful for navigation, use the following function:
+
+	[COMMAND_SUGGESTION]
+	Reason: user requested the entire file tree
+	AwaitingCommandApproval: false
+	Command: kit file-tree <path_to_repo>
+	[/COMMAND_SUGGESTION]
+
+	for example:
+	[COMMAND_SUGGESTION]
+	Reason: user requested the entire file tree
+	AwaitingCommandApproval: false
+	Command: kit file-tree /Users/nawidt/Documents/menace/menace-cli
+	[/COMMAND_SUGGESTION]
+
+	To get the content of a file, use the following function. Here is an example:
+
+	[COMMAND_SUGGESTION]
+	Reason: user requested the content of a file
+	AwaitingCommandApproval: false
+	Command: kit file-content <path_to_repo> <path_to_file>
+	[/COMMAND_SUGGESTION]
+
+	for example:
+	[COMMAND_SUGGESTION]
+	Reason: user requested the content of a file
+	AwaitingCommandApproval: false
+	Command: kit file-content /Users/nawidt/Documents/menace/menace-cli /Users/nawidt/Documents/menace/menace-cli/ui/executor.go
+	[/COMMAND_SUGGESTION]
+
+	To find symbols (functions, classes, variables, etc.) in the codebase, use the following function:
+
+	[COMMAND_SUGGESTION]
+	Reason: user requested to find symbols in the codebase
+	AwaitingCommandApproval: false
+	Command: kit find-symbols /Users/nawidt/Documents/menace/menace-cli "function_name"
+	[/COMMAND_SUGGESTION]
+
 	When using the CreateAndApplyDiffs function, the "diffs" array should contain objects with these fields:
 	- "Type": the type of change (0 = Add, 1 = Delete, 2 = Modify)
 	- "LineIndex": the 1-based line number to change
@@ -127,7 +166,7 @@ func getSystemPrompt(shell string) string {
 	- If you are unable to make the edit, ask the user to do it manually.
 
 	Do NOT suggest opening files in editors like Notepad, nano, vim, or any GUI or interactive editor.
-	If you need to read, write, or modify a file, ALWAYS use a [FUNCTION_CALL] block (using either ReadFileWithLineNumbers or CreateAndApplyDiffs).
+	If you need to read, write, or modify a file, ALWAYS use a [FUNCTION_CALL] block.
 	Never use shell commands for file reading or writing—use function calls instead.
 	Only use shell commands for tasks that cannot be accomplished via function calls.
 

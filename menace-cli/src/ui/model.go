@@ -2,12 +2,12 @@ package ui
 
 import (
 	"menace-go/llmServer"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
-	"context"
 	"fmt"
-
+	"encoding/json"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
 	"github.com/mattn/go-runewidth"
@@ -20,6 +20,9 @@ type Model struct {
 	agent  *llmServer.Agent
 	Width  int
 	Height int
+
+	// InitiatedRPC is true if the RPC call has been initiated
+	InitiatedRPC bool
 	// Scroll offset (0 = bottom of chat, increase to scroll up)
 	Scroll int
 	// Cursor position in input (column, row)
@@ -117,18 +120,33 @@ func (m *Model) InsertCharacter(character string) {
 	m.Input = strings.Join(lines, "\n")
 }
 
+func (m *Model) ReduceMessageContext(message string) {
+	// if the message chain is too long, truncate it
+	if len(m.Messages) > 20 {
+		m.Messages = m.Messages[len(m.Messages)-20:]
+		for i, msg := range m.Messages {
+			if i < 10 && len(strings.Split(msg.Content, "\n")) > 100 {
+				m.Messages[i].Content = strings.Join(strings.Split(msg.Content, "\n")[:100], "\n")
+			}
+		}
+	}
+}
+
 // Adds a user message to the chat history
 func (m *Model) AddUserMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "user", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 // Adds a system message to the model chat history
 func (m *Model) AddSystemMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "system", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 func (m *Model) AddAgentMessage(message string) {
 	m.Messages = append(m.Messages, Message{Sender: "llm", Content: message})
+	m.ReduceMessageContext(message)
 }
 
 // Handle mouse scrolling
@@ -514,22 +532,59 @@ func (m *Model) GetClipboardContent() string {
 	return string(output)
 }
 
-// Helper function to send a message to the agent and get a response. To be integrated in future
-func (m *Model) AIChat(msg string) tea.Msg {
-	response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), msg)
-	if err != nil {
-		return SystemMessage{Content: "Error: " + err.Error()}
+// runs RPC call and then two-step parses result into string
+func helperRPC(route string, args map[string]interface{}, m *Model) (string, error) {
+	var isFlaskReady = os.Getenv("FLASK_READY") == "true"
+	if !isFlaskReady {
+		if !m.InitiatedRPC {
+			// initialize the repository using the current working directory
+			wd, err := os.Getwd()
+			if err != nil {
+				return "", fmt.Errorf("failed to get current working directory: %v", err)
+			}
+			_, err = llmServer.CallRPC("init", map[string]interface{}{"path": wd})
+
+			if err != nil {
+				return "", fmt.Errorf("server failed to initialize repository: %v", err)
+			}
+			m.InitiatedRPC = true
+		} else {
+			return "This functionality is not available just yet. Please wait a few seconds and try again", fmt.Errorf("this functionality is not available just yet. Please wait a few seconds and try again")
+		}
 	}
-	if cmdSuggestion != nil {
-		return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+	var output string
+	result, customErr := llmServer.CallRPC(route, args)
+	if customErr != nil {
+		m.AddSystemMessage(fmt.Sprintf("Error: %s", customErr))
+		m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", customErr), "")
+		output = "Error: " + customErr.Error()
+	} else {
+		resultStr, parseErr := json.Marshal(result)
+		if parseErr != nil {
+			m.AddSystemMessage(fmt.Sprintf("Error: %s", parseErr))
+			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured during parsing the file content. Error: %s. Please fix this and try again", parseErr), "")
+			output = "Error: " + parseErr.Error()
+			return output, parseErr
+		} else {
+			output = string(resultStr)
+		}
 	}
-	return LLMResponseMsg{Content: response}
+	return output, customErr
 }
 
 func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
 	var output string
 	var err error
 	switch m.PendingFunctionCall.Name {
+	// case "GetFileContent":
+	// 	path, _ := m.PendingFunctionCall.Args["path"].(string)
+	// 	output, err = helperRPC("get_file_content", map[string]interface{}{"path": path}, m)
+	// case "FindSymbols":
+	// 	symbol, _ := m.PendingFunctionCall.Args["symbol"].(string)
+	// 	symbolType, _ := m.PendingFunctionCall.Args["symbol_type"].(string)
+	// 	output, err = helperRPC("find_symbols", map[string]interface{}{"symbol": symbol, "symbol_type": symbolType}, m)
+	// case "FileTree":
+	// 	output, err = helperRPC("file_tree", nil, m)
 	case "createPullRequest":
 		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
 		title, _ := m.PendingFunctionCall.Args["title"].(string)
