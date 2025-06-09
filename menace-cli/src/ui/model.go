@@ -5,6 +5,8 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"context"
+	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/cellbuf"
@@ -42,6 +44,7 @@ type Model struct {
 
 	// Pending command state
 	PendingCommand          *CommandSuggestionMsg
+	PendingFunctionCall     *FunctionCallMsg
 	AwaitingCommandApproval bool
 }
 
@@ -509,4 +512,65 @@ func (m *Model) GetClipboardContent() string {
 		return ""
 	}
 	return string(output)
+}
+
+// Helper function to send a message to the agent and get a response. To be integrated in future
+func (m *Model) AIChat(msg string) tea.Msg {
+	response, cmdSuggestion, err := m.agent.SendMessage(context.Background(), msg)
+	if err != nil {
+		return SystemMessage{Content: "Error: " + err.Error()}
+	}
+	if cmdSuggestion != nil {
+		return CommandSuggestionMsg{Command: cmdSuggestion.Command, Reason: cmdSuggestion.Reason}
+	}
+	return LLMResponseMsg{Content: response}
+}
+
+func (m *Model) ExecuteFunctionCall(fnCall *FunctionCallMsg) (string, error) {
+	var output string
+	var err error
+	switch m.PendingFunctionCall.Name {
+	case "createPullRequest":
+		branchName, _ := m.PendingFunctionCall.Args["branch_name"].(string)
+		title, _ := m.PendingFunctionCall.Args["title"].(string)
+		summary, _ := m.PendingFunctionCall.Args["summary"].(string)
+		err = llmServer.CreatePullRequest(branchName, title, summary)
+		if err != nil {
+			m.AddSystemMessage(fmt.Sprintf("Error: %s", err))
+			m.agent.AddToMessageChain(fmt.Sprintf("Oops! An error occured. Error: %s. Please fix this and try again", err), "")
+			output = "Error: " + err.Error()
+		} else {
+			output = "Pull request created successfully."
+		}
+	case "ReadFileWithLineNumbers":
+		path, _ := m.PendingFunctionCall.Args["path"].(string)
+		output, err = ReadFileWithLineNumbers(path)
+	case "CreateAndApplyDiffs":
+		path, _ := m.PendingFunctionCall.Args["path"].(string)
+		diffsRaw, _ := m.PendingFunctionCall.Args["diffs"].([]interface{})
+		var diffs []LineDiff
+		for _, d := range diffsRaw {
+			if diffMap, ok := d.(map[string]interface{}); ok {
+				diff := LineDiff{}
+				if t, ok := diffMap["Type"].(float64); ok {
+					diff.Type = DiffType(int(t))
+				}
+				if idx, ok := diffMap["LineIndex"].(float64); ok {
+					diff.LineIndex = int(idx)
+				}
+				if oldC, ok := diffMap["OldContent"].(string); ok {
+					diff.OldContent = oldC
+				}
+				if newC, ok := diffMap["NewContent"].(string); ok {
+					diff.NewContent = newC
+				}
+				diffs = append(diffs, diff)
+			}
+		}
+		err = CreateAndApplyDiffs(path, diffs)
+		if err == nil {
+			output = "Diffs applied successfully."
+		}
+	}
+	return output, err
 }

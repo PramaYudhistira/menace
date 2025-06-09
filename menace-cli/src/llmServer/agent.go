@@ -9,6 +9,7 @@ import (
 	"github.com/tmc/langchaingo/llms"
 	"github.com/tmc/langchaingo/llms/anthropic"
 	"github.com/tmc/langchaingo/llms/openai"
+	"github.com/tmc/langchaingo/llms/ollama"
 )
 
 // Agent represents the main agent that processes LLM responses and executes commands.
@@ -22,6 +23,7 @@ type Agent struct {
 	ctx      context.Context
 	provider string
 	Model    string
+	isOpenSource bool
 }
 
 // NewAgent creates a new agent instance
@@ -83,8 +85,9 @@ func (a *Agent) SendMessage(ctx context.Context, input string) (string, *Command
 	}
 
 	// Parse for command suggestion
+	//integrate this with code execution
 	cmdSuggestion := parseCommandSuggestion(responseText)
-
+	
 	// Add assistant's response to history
 	a.messages = append(a.messages, llms.MessageContent{
 		Role:  llms.ChatMessageTypeAI,
@@ -110,12 +113,13 @@ func (a *Agent) ClearHistory() {
 	}
 }
 
-func (a *Agent) SetModel(provider string, model string) error {
+func (a *Agent) SetModel(provider string, model string, openSource bool) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	a.provider = provider
 	a.Model = model
+	a.isOpenSource = openSource
 
 	switch provider {
 	case "anthropic":
@@ -138,7 +142,26 @@ func (a *Agent) SetModel(provider string, model string) error {
 		}
 		a.llm = llm
 		return nil
+	case "ollama":
+		llm, err := ollama.New(
+			ollama.WithModel(model),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Ollama client with model %s: %v", model, err)
+		}
+		a.llm = llm
+		return nil
 	default:
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
+}
+
+func (a *Agent) AddToMessageChain(new_message string, role llms.ChatMessageType) {
+	if role == "" {
+		role = llms.ChatMessageTypeSystem
+	}
+	a.messages = append(a.messages, llms.MessageContent{
+		Role:  role,
+		Parts: []llms.ContentPart{llms.TextContent{Text: new_message}},
+	})
 }

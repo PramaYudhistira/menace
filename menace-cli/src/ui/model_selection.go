@@ -13,25 +13,22 @@ type ModelInfo struct {
 	ID       string
 }
 
-var ModelMapping = map[string]ModelInfo{
+var ClosedSourceModels = map[string]ModelInfo{
 	"GPT 4.1": {Provider: "openai", ID: "gpt-4-0125-preview"},
 	"GPT 3.5": {Provider: "openai", ID: "gpt-3.5-turbo"},
 	"o4-mini": {Provider: "openai", ID: "o4-mini-2025-04-16"},
 	"Claude":  {Provider: "anthropic", ID: "claude-3-opus-20240229"},
 }
 
-var AvailableModels = []string{
-	"GPT 4.1",
-	"GPT 3.5",
-	"o4-mini",
-	"Claude",
-}
+var ModelKeys = []string{}
+
+var AvailableModels = map[string]ModelInfo{}
 
 func (m *Model) ConfigView(termHeight, termWidth int) string {
 	var configContent strings.Builder
 	configContent.WriteString(HeaderStyle.Render("Select Model") + "\n\n")
 
-	for i, model := range AvailableModels {
+	for i, model := range ModelKeys {
 		style := lipgloss.NewStyle()
 		if i == m.ConfigCursor {
 			style = style.
@@ -63,6 +60,25 @@ func (m *Model) ConfigView(termHeight, termWidth int) string {
 func (m *Model) OpenConfig() {
 	m.IsConfigOpen = true
 	m.ConfigCursor = 0
+
+	// run shell script called "ollama list" and get the output
+	AvailableModels = make(map[string]ModelInfo)
+	for model := range ClosedSourceModels {
+		AvailableModels[model] = ClosedSourceModels[model]
+	}
+	ollamas, ollamaErr := runShellCommand("ollama list")
+	if ollamaErr == nil {
+		for _, ollama := range strings.Split(ollamas, "\n") {
+			if !strings.Contains(ollama, "NAME") && ollama != "" {
+				modelName := strings.Split(ollama, "  ")[0]
+				AvailableModels[strings.Split(modelName, ":")[0]] = ModelInfo{Provider: "ollama", ID: modelName}
+			}
+		}
+	}
+	ModelKeys = make([]string, 0, len(AvailableModels))
+	for model := range AvailableModels {
+		ModelKeys = append(ModelKeys, model)
+	}
 }
 
 // CloseConfig closes the config page
@@ -94,9 +110,9 @@ func (m *Model) SelectModel() {
 		return
 	}
 
-	selectedModel := AvailableModels[m.ConfigCursor]
+	selectedModel := ModelKeys[m.ConfigCursor]
 
-	modelInfo, exists := ModelMapping[selectedModel]
+	modelInfo, exists := AvailableModels[selectedModel]
 	if !exists {
 		m.AddSystemMessage("Error: Invalid model selected")
 		m.CloseConfig()
@@ -104,7 +120,11 @@ func (m *Model) SelectModel() {
 	}
 
 	// Update the agent's model
-	err := m.agent.SetModel(modelInfo.Provider, modelInfo.ID)
+	err := m.agent.SetModel(
+		modelInfo.Provider,
+		modelInfo.ID,
+		modelInfo.Provider == "ollama",
+	)
 	if err != nil {
 		m.AddSystemMessage("Error switching model: " + err.Error())
 		m.CloseConfig()
