@@ -1,6 +1,7 @@
 {
   "name": "menace-cli",
   "version": "1.0.0",
+  "description": "A cross-platform, intelligent terminal assistant powered by AI that helps with command suggestions, file operations, and code assistance",
   "main": "index.js",
   "bin": {
     "menace": "./bin/menace.js"
@@ -9,10 +10,63 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "node scripts/build-all.js",
     "build-windows": "node scripts/build-windows.js",
-    "build-mac": "node scripts/build-mac.js"
+    "build-mac": "node scripts/build-mac.js",
+    "dev": "cd src && go run .",
+    "clean": "rm -rf bin/*"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "keywords": [
+    "cli",
+    "ai",
+    "assistant",
+    "terminal",
+    "openai",
+    "anthropic",
+    "productivity",
+    "automation",
+    "code-assistant",
+    "command-line",
+    "tui",
+    "bubble-tea",
+    "golang",
+    "llm",
+    "gpt",
+    "claude"
+  ],
+  "author": "Prama Yudhistira",
+  "contributors": [
+    {
+      "name": "Prama Yudhistira",
+      "email": "",
+      "url": "https://github.com/PramaYudhistira"
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/PramaYudhistira/terminal-chat#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PramaYudhistira/terminal-chat.git",
+    "directory": "menace-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/PramaYudhistira/terminal-chat/issues"
+  },
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux", 
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "files": [
+    "bin/",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ]
 }
