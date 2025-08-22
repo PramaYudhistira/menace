@@ -1,0 +1,510 @@
+# API Reference
+
+Complete reference for Menace CLI's internal APIs, interfaces, and extensibility points.
+
+## Core Interfaces
+
+### Agent Interface
+
+The `Agent` struct is the primary interface between the UI and LLM providers.
+
+```go
+type Agent struct {
+    llm      llms.Model           // LangChain LLM interface
+    mu       sync.Mutex          // Thread safety mutex
+    shell    string              // Detected shell environment
+    messages []llms.MessageContent // Conversation history
+    ctx      context.Context     // Request context
+    provider string              // Current LLM provider
+    Model    string              // Current model name
+    isOpenSource bool            // Provider type indicator
+}
+```
+
+#### Methods
+
+##### `NewAgent(apiKey string) (*Agent, error)`
+
+Creates a new agent instance with OpenAI configuration.
+
+**Parameters:**
+- `apiKey`: OpenAI API key
+
+**Returns:**
+- `*Agent`: Configured agent instance
+- `error`: Error if initialization fails
+
+**Example:**
+```go
+agent, err := llmServer.NewAgent("sk-your-api-key")
+if err != nil {
+    log.Fatalf("Failed to create agent: %v", err)
+}
+```
+
+##### `SendMessage(ctx context.Context, input string) (string, *CommandSuggestion, error)`
+
+Sends a message to the LLM and processes the response.
+
+**Parameters:**
+- `ctx`: Request context for cancellation
+- `input`: User input message
+
+**Returns:**
+- `string`: LLM response text
+- `*CommandSuggestion`: Extracted command suggestion (if any)
+- `error`: Error if request fails
+
+**Example:**
+```go
+response, cmdSuggestion, err := agent.SendMessage(ctx, "How do I list files?")
+if err != nil {
+    return fmt.Errorf("failed to get response: %w", err)
+}
+```
+
+##### `SwitchModel(modelName string) error`
+
+Changes the active LLM model.
+
+**Parameters:**
+- `modelName`: Target model identifier
+
+**Returns:**
+- `error`: Error if model switch fails
+
+**Supported Models:**
+- `"o4-mini-2025-04-16"` (Default)
+- `"gpt-4-1106-preview"`
+- `"gpt-3.5-turbo"`
+
+### LLMService Interface
+
+Singleton service managing LLM API communications.
+
+```go
+type LLMService struct {
+    apiKey     string
+    baseURL    string
+    httpClient *http.Client
+    model      string
+    messages   []Message
+    mu         sync.Mutex
+}
+```
+
+#### Methods
+
+##### `GetInstance() *LLMService`
+
+Returns the singleton LLMService instance.
+
+**Example:**
+```go
+service := llmServer.GetInstance()
+service.Configure("sk-your-api-key")
+```
+
+##### `SendMessage(input string) (*ChatResponse, error)`
+
+Sends a message to the configured LLM API.
+
+**Parameters:**
+- `input`: Message content
+
+**Returns:**
+- `*ChatResponse`: API response structure
+- `error`: Error if request fails
+
+##### `SetModel(model string)`
+
+Changes the active model for subsequent requests.
+
+**Parameters:**
+- `model`: Model identifier
+
+##### `ClearHistory()`
+
+Clears the conversation history.
+
+## Data Structures
+
+### Message Types
+
+#### `Message`
+
+Basic message structure used throughout the system.
+
+```go
+type Message struct {
+    Sender  string // "user", "llm", "system"
+    Content string // Message text content
+}
+```
+
+#### `ChatRequest`
+
+Structure for LLM API requests.
+
+```go
+type ChatRequest struct {
+    Model    string    `json:"model"`
+    Messages []Message `json:"messages"`
+}
+```
+
+#### `ChatResponse`
+
+Structure for LLM API responses.
+
+```go
+type ChatResponse struct {
+    Choices []struct {
+        Message Message `json:"message"`
+    } `json:"choices"`
+}
+```
+
+### Command Structures
+
+#### `CommandSuggestion`
+
+Represents a command suggestion extracted from LLM responses.
+
+```go
+type CommandSuggestion struct {
+    Command string // The suggested shell command
+    Reason  string // Explanation for the command
+}
+```
+
+#### `FunctionCall`
+
+Represents a function call request from the LLM.
+
+```go
+type FunctionCall struct {
+    Name string                 // Function name
+    Args map[string]interface{} // Function arguments
+}
+```
+
+## UI Model API
+
+### Core Model
+
+The main UI model following Bubble Tea patterns.
+
+```go
+type Model struct {
+    Input    string              // Current input text
+    Messages []Message           // Chat history
+    agent    *llmServer.Agent    // LLM agent reference
+    Width    int                 // Terminal dimensions
+    Height   int
+    
+    // Cursor state
+    CursorX     int
+    CursorY     int
+    WindowStart int
+    
+    // Selection state
+    SelectionStartX int
+    SelectionStartY int
+    SelectionEndX   int
+    SelectionEndY   int
+    IsHighlighting  bool
+    
+    // Application state
+    IsThinking   bool
+    IsConfigOpen bool
+    
+    // Command approval
+    PendingCommand          *CommandSuggestionMsg
+    AwaitingCommandApproval bool
+}
+```
+
+#### Key Methods
+
+##### `NewModel(agent *llmServer.Agent) *Model`
+
+Creates a new UI model instance.
+
+**Parameters:**
+- `agent`: Configured LLM agent
+
+**Returns:**
+- `*Model`: Initialized UI model
+
+##### `Update(msg tea.Msg) (tea.Model, tea.Cmd)`
+
+Handles UI events and state updates (Bubble Tea interface).
+
+##### `View() string`
+
+Renders the current UI state (Bubble Tea interface).
+
+##### Input Management Methods
+
+```go
+func (m *Model) InsertCharacter(character string)
+func (m *Model) InsertNewLine()
+func (m *Model) HandleBackSpace()
+func (m *Model) HandleDelete()
+func (m *Model) HandleHorizontalCursorMovement(direction string)
+func (m *Model) HandleVerticalCursorMovement(direction string)
+```
+
+##### Text Selection Methods
+
+```go
+func (m *Model) SelectAll()
+func (m *Model) GetSelectedText() string
+func (m *Model) CopyToClipboard(text string)
+func (m *Model) CutSelectedText()
+func (m *Model) GetClipboardContent() string
+```
+
+## Message System
+
+### Message Types
+
+Bubble Tea message types for inter-component communication.
+
+#### `LLMResponseMsg`
+
+```go
+type LLMResponseMsg struct {
+    Content string
+}
+```
+
+#### `CommandSuggestionMsg`
+
+```go
+type CommandSuggestionMsg struct {
+    Command string
+    Reason  string
+}
+```
+
+#### `SystemMessage`
+
+```go
+type SystemMessage struct {
+    Content string
+}
+```
+
+#### `FunctionCallMsg`
+
+```go
+type FunctionCallMsg struct {
+    Name string
+    Args map[string]interface{}
+}
+```
+
+## Extension Points
+
+### Adding New LLM Providers
+
+Implement the LangChain `llms.Model` interface:
+
+```go
+type CustomProvider struct {
+    apiKey string
+    model  string
+}
+
+func (c *CustomProvider) GenerateContent(
+    ctx context.Context, 
+    messages []llms.MessageContent, 
+    options ...llms.CallOption,
+) (*llms.ContentResponse, error) {
+    // Implementation
+}
+```
+
+### Custom Function Definitions
+
+Add functions that the LLM can call:
+
+```go
+// Define the function
+func CustomFunction(args map[string]interface{}) (string, error) {
+    // Implementation
+    return result, nil
+}
+
+// Register with agent
+functions := []llms.FunctionDefinition{
+    {
+        Name:        "custom_function",
+        Description: "Performs custom operation",
+        Parameters: map[string]interface{}{
+            "type": "object",
+            "properties": map[string]interface{}{
+                "param1": map[string]string{"type": "string"},
+            },
+            "required": []string{"param1"},
+        },
+    },
+}
+```
+
+### UI Components
+
+Create custom Bubble Tea components:
+
+```go
+type CustomComponent struct {
+    // Component state
+    width  int
+    height int
+    active bool
+}
+
+func (c CustomComponent) Init() tea.Cmd {
+    return nil
+}
+
+func (c CustomComponent) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+    switch msg := msg.(type) {
+    case tea.KeyMsg:
+        // Handle input
+    case tea.WindowSizeMsg:
+        c.width = msg.Width
+        c.height = msg.Height
+    }
+    return c, nil
+}
+
+func (c CustomComponent) View() string {
+    // Render component
+    return "Custom Component View"
+}
+```
+
+## Configuration API
+
+### Environment Variables
+
+Access configuration through environment variables:
+
+```go
+import "os"
+
+// Get configuration values
+apiKey := os.Getenv("OPENAI_API_KEY")
+model := os.Getenv("MENACE_DEFAULT_MODEL")
+timeout := os.Getenv("MENACE_TIMEOUT")
+```
+
+### Runtime Configuration
+
+```go
+// Model switching
+agent.SwitchModel("gpt-4-1106-preview")
+
+// Service configuration
+service := llmServer.GetInstance()
+service.SetModel("gpt-3.5-turbo")
+service.Configure(newAPIKey)
+```
+
+## Error Handling
+
+### Error Types
+
+Common error patterns in the codebase:
+
+```go
+// API errors
+type APIError struct {
+    StatusCode int
+    Message    string
+}
+
+func (e APIError) Error() string {
+    return fmt.Sprintf("API error %d: %s", e.StatusCode, e.Message)
+}
+
+// Configuration errors
+var (
+    ErrMissingAPIKey = errors.New("OpenAI API key not provided")
+    ErrInvalidModel  = errors.New("invalid model specified")
+)
+```
+
+### Error Handling Patterns
+
+```go
+// Wrapping errors for context
+if err != nil {
+    return fmt.Errorf("failed to send message: %w", err)
+}
+
+// Checking error types
+var apiErr APIError
+if errors.As(err, &apiErr) {
+    // Handle API-specific error
+}
+```
+
+## Utility Functions
+
+### Shell Detection
+
+```go
+type ModelFactory struct{}
+
+func (mf ModelFactory) DetectShell() string {
+    switch runtime.GOOS {
+    case "windows":
+        return "windows/powershell"
+    case "darwin", "linux":
+        return runtime.GOOS + "/bash"
+    default:
+        return "unknown/sh"
+    }
+}
+```
+
+### Text Processing
+
+```go
+// Wrap text for terminal display
+func WrapText(text string, width int) string {
+    return cellbuf.Wrap(text, width, "")
+}
+
+// Calculate display width
+func DisplayWidth(text string) int {
+    return runewidth.StringWidth(text)
+}
+```
+
+## Constants
+
+### Model Identifiers
+
+```go
+const (
+    GPT4Mini     = "gpt-4-0125-preview"
+    GPT4MiniHigh = "gpt-4-1106-preview"
+    GPT35Turbo   = "gpt-3.5-turbo"
+)
+```
+
+### API Endpoints
+
+```go
+const (
+    OpenAIBaseURL = "https://api.openai.com/v1/chat/completions"
+    DefaultTimeout = 30 * time.Second
+)
+```
+
+This API reference provides the foundation for extending and integrating with Menace CLI. All interfaces follow Go conventions and integrate seamlessly with the Bubble Tea framework.

@@ -1,0 +1,393 @@
+# Configuration
+
+Learn how to configure Menace CLI for your specific needs, including API settings, model preferences, and advanced customization options.
+
+## Environment Variables
+
+Menace CLI uses environment variables for configuration. This approach ensures security and portability across different systems.
+
+### Required Configuration
+
+#### OpenAI API Key
+
+**Environment Variable**: `OPENAI_API_KEY`
+
+This is the only required configuration for Menace CLI to function.
+
+**Setting the API Key:**
+
+**Linux/macOS:**
+```bash
+export OPENAI_API_KEY="sk-your-api-key-here"
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY = "sk-your-api-key-here"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set OPENAI_API_KEY=sk-your-api-key-here
+```
+
+### Optional Configuration
+
+#### Custom API Base URL
+
+**Environment Variable**: `OPENAI_API_BASE`
+
+Use this to point to a different OpenAI-compatible API endpoint.
+
+```bash
+export OPENAI_API_BASE="https://api.openai.com/v1"  # Default
+```
+
+#### Request Timeout
+
+**Environment Variable**: `MENACE_TIMEOUT`
+
+Set custom timeout for API requests (in seconds).
+
+```bash
+export MENACE_TIMEOUT="30"  # Default is 30 seconds
+```
+
+#### Default Model
+
+**Environment Variable**: `MENACE_DEFAULT_MODEL`
+
+Set the default AI model to use on startup.
+
+```bash
+export MENACE_DEFAULT_MODEL="gpt-4-0125-preview"  # Default
+```
+
+Available models:
+- `gpt-4-0125-preview` (GPT-4 Mini)
+- `gpt-4-1106-preview` (GPT-4 High)  
+- `gpt-3.5-turbo` (GPT-3.5 Turbo)
+
+## Persistent Configuration
+
+To make your configuration persist across terminal sessions, add the environment variables to your shell configuration file.
+
+### Linux/macOS
+
+**For bash (.bashrc):**
+```bash
+echo 'export OPENAI_API_KEY="sk-your-api-key-here"' >> ~/.bashrc
+echo 'export MENACE_DEFAULT_MODEL="gpt-4-0125-preview"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**For zsh (.zshrc):**
+```bash
+echo 'export OPENAI_API_KEY="sk-your-api-key-here"' >> ~/.zshrc
+echo 'export MENACE_DEFAULT_MODEL="gpt-4-0125-preview"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**For fish (.config/fish/config.fish):**
+```fish
+echo 'set -gx OPENAI_API_KEY "sk-your-api-key-here"' >> ~/.config/fish/config.fish
+echo 'set -gx MENACE_DEFAULT_MODEL "gpt-4-0125-preview"' >> ~/.config/fish/config.fish
+source ~/.config/fish/config.fish
+```
+
+### Windows
+
+**PowerShell Profile:**
+```powershell
+# Find your profile path
+echo $PROFILE
+
+# Add to profile
+Add-Content $PROFILE '$env:OPENAI_API_KEY = "sk-your-api-key-here"'
+Add-Content $PROFILE '$env:MENACE_DEFAULT_MODEL = "gpt-4-0125-preview"'
+```
+
+**System Environment Variables:**
+```cmd
+setx OPENAI_API_KEY "sk-your-api-key-here"
+setx MENACE_DEFAULT_MODEL "gpt-4-0125-preview"
+```
+
+## Runtime Configuration
+
+### Model Selection
+
+You can change the active model during runtime using the configuration interface:
+
+1. **Press F1** to open model selection
+2. **Use arrow keys** to navigate options
+3. **Press Enter** to select a model
+4. **Press Esc** to cancel
+
+### Available Models
+
+#### GPT-4 Mini (gpt-4-0125-preview)
+- **Use Case**: General purpose, balanced performance
+- **Speed**: Fast
+- **Cost**: Moderate  
+- **Quality**: High
+- **Best For**: Most daily tasks, code assistance
+
+#### GPT-4 High (gpt-4-1106-preview)  
+- **Use Case**: Complex problems requiring highest quality
+- **Speed**: Slower
+- **Cost**: Highest
+- **Quality**: Highest
+- **Best For**: Complex debugging, architecture decisions
+
+#### GPT-3.5 Turbo (gpt-3.5-turbo)
+- **Use Case**: Quick queries, simple tasks
+- **Speed**: Fastest  
+- **Cost**: Lowest
+- **Quality**: Good
+- **Best For**: Simple questions, quick command help
+
+## Shell Detection
+
+Menace CLI automatically detects your shell environment and adapts its responses accordingly.
+
+### Supported Shells
+
+**Linux/macOS:**
+- bash
+- zsh  
+- fish
+- sh
+
+**Windows:**
+- PowerShell
+- Command Prompt (cmd)
+
+### Manual Shell Override
+
+If auto-detection doesn't work correctly, you can override it:
+
+```bash
+export MENACE_SHELL="bash"  # Override shell detection
+```
+
+## Advanced Configuration
+
+### Proxy Settings
+
+If you're behind a corporate firewall or proxy:
+
+```bash
+export HTTPS_PROXY="http://proxy.company.com:8080"
+export HTTP_PROXY="http://proxy.company.com:8080"
+```
+
+### SSL Certificate Verification
+
+For environments with custom certificates:
+
+```bash
+export NODE_TLS_REJECT_UNAUTHORIZED="0"  # Disable SSL verification (not recommended)
+```
+
+**Note**: Disabling SSL verification reduces security. Only use in development environments.
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```bash
+export MENACE_DEBUG="true"
+```
+
+This will show:
+- API request details
+- Response processing information  
+- Shell detection results
+- Error stack traces
+
+### Context Window Management
+
+Control conversation context limits:
+
+```bash
+export MENACE_MAX_CONTEXT="4000"  # Maximum tokens to send to API
+export MENACE_CONTEXT_STRATEGY="truncate"  # "truncate" or "summarize"
+```
+
+**Context Strategies:**
+- `truncate`: Remove oldest messages when limit is reached
+- `summarize`: Summarize old context (future feature)
+
+## Configuration Files
+
+Currently, Menace CLI uses only environment variables for configuration. Future versions may support configuration files.
+
+### Planned Configuration File Support
+
+Future versions may support:
+
+```yaml
+# ~/.menace/config.yaml
+api:
+  provider: "openai"
+  key: "sk-..."
+  base_url: "https://api.openai.com/v1"
+  timeout: 30
+
+models:
+  default: "gpt-4-0125-preview"
+  available:
+    - "gpt-4-0125-preview"
+    - "gpt-4-1106-preview" 
+    - "gpt-3.5-turbo"
+
+ui:
+  theme: "dark"
+  show_typing_indicator: true
+  mouse_support: true
+
+context:
+  max_tokens: 4000
+  strategy: "truncate"
+
+shell:
+  auto_detect: true
+  override: ""
+```
+
+## Security Considerations
+
+### API Key Security
+
+**Best Practices:**
+- Never commit API keys to version control
+- Use environment variables, not hardcoded values
+- Rotate API keys regularly
+- Use separate keys for development and production
+
+**API Key Validation:**
+```bash
+# Test if your API key is working
+curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+     -H "Content-Type: application/json" \
+     "https://api.openai.com/v1/models"
+```
+
+### Network Security
+
+**Recommendations:**
+- Use HTTPS for all API communications (default)
+- Consider using a VPN in untrusted networks
+- Monitor API usage for unusual activity
+
+## Troubleshooting Configuration
+
+### Common Configuration Issues
+
+#### 1. API Key Not Found
+```bash
+Error: OPENAI_API_KEY environment variable not set
+```
+
+**Solution:**
+```bash
+export OPENAI_API_KEY="sk-your-key-here"
+# Verify it's set
+echo $OPENAI_API_KEY
+```
+
+#### 2. Invalid API Key
+```bash  
+Error: API request failed with status: 401
+```
+
+**Solutions:**
+- Verify the API key is correct
+- Check if the key has been revoked
+- Ensure the key has proper permissions
+
+#### 3. Network Connection Issues
+```bash
+Error: Failed to connect to API
+```
+
+**Solutions:**
+- Check internet connectivity
+- Verify proxy settings
+- Check firewall rules
+
+#### 4. Model Not Available
+```bash
+Error: Model not found or unavailable
+```
+
+**Solutions:**
+- Check available models in your OpenAI account
+- Verify model name spelling
+- Try a different model
+
+### Verification Commands
+
+**Check Environment Variables:**
+```bash
+# Linux/macOS
+env | grep MENACE
+env | grep OPENAI
+
+# Windows PowerShell  
+Get-ChildItem Env: | Where-Object Name -like "*MENACE*"
+Get-ChildItem Env: | Where-Object Name -like "*OPENAI*"
+```
+
+**Test API Connection:**
+```bash
+# Quick test (requires curl)
+curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+     "https://api.openai.com/v1/models" | head
+```
+
+### Reset Configuration
+
+To reset all configuration to defaults:
+
+```bash
+# Remove environment variables
+unset OPENAI_API_KEY
+unset MENACE_DEFAULT_MODEL  
+unset MENACE_TIMEOUT
+unset MENACE_SHELL
+
+# Remove from shell profile
+# Edit ~/.bashrc, ~/.zshrc, etc. and remove relevant lines
+```
+
+## Configuration Examples
+
+### Developer Setup
+```bash
+# ~/.bashrc or ~/.zshrc
+export OPENAI_API_KEY="sk-dev-key-here"
+export MENACE_DEFAULT_MODEL="gpt-3.5-turbo"  # Faster for development
+export MENACE_DEBUG="true"
+export MENACE_TIMEOUT="60"
+```
+
+### Production/Professional Setup  
+```bash
+# ~/.bashrc or ~/.zshrc
+export OPENAI_API_KEY="sk-prod-key-here"
+export MENACE_DEFAULT_MODEL="gpt-4-0125-preview"  # Balanced quality
+export MENACE_MAX_CONTEXT="8000"
+```
+
+### Corporate Environment
+```bash
+# ~/.bashrc or ~/.zshrc  
+export OPENAI_API_KEY="sk-corporate-key-here"
+export HTTPS_PROXY="http://proxy.company.com:8080"
+export MENACE_DEFAULT_MODEL="gpt-4-0125-preview"
+export MENACE_TIMEOUT="120"  # Longer timeout for slower networks
+```
+
+With proper configuration, Menace CLI will provide optimal performance tailored to your specific environment and use case.

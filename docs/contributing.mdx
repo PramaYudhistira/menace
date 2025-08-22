@@ -1,0 +1,462 @@
+# Contributing to Menace CLI
+
+Welcome! This guide covers everything you need to know about contributing to Menace CLI, from setting up your development environment to submitting pull requests.
+
+## Getting Started
+
+### Prerequisites
+
+Before contributing, ensure you have:
+
+- **Go 1.18+** - Required for building the application
+- **Node.js 14+** - Required for the build system and packaging
+- **Git** - For version control
+- **A code editor** - VS Code with Go extension recommended
+
+### Development Setup
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork**:
+   ```bash
+   git clone https://github.com/your-username/menace-cli.git
+   cd menace-cli
+   ```
+
+3. **Set up development environment**:
+   ```bash
+   cd menace-cli
+   npm install
+   export OPENAI_API_KEY="your-development-api-key"
+   ```
+
+4. **Build and test**:
+   ```bash
+   npm run build
+   npm link  # For local testing
+   menace    # Test the application
+   ```
+
+## How to Contribute
+
+### Types of Contributions
+
+We welcome various types of contributions:
+
+- **🐛 Bug Fixes** - Fix issues and improve stability
+- **✨ Features** - Add new functionality and capabilities
+- **📚 Documentation** - Improve guides, API docs, and examples
+- **🧪 Tests** - Add test coverage and improve testing
+- **🎨 UI/UX** - Enhance the user interface and experience
+- **⚡ Performance** - Optimize speed and resource usage
+
+### Before You Start
+
+1. **Check existing issues** - Look for related issues or discussions
+2. **Create an issue** - For significant changes, discuss first
+3. **Get feedback** - Ensure your approach aligns with project goals
+
+## Development Workflow
+
+### 1. Create a Feature Branch
+
+```bash
+# Create and switch to a new branch
+git checkout -b feature/your-feature-name
+
+# Or for bug fixes
+git checkout -b fix/issue-description
+```
+
+### Branch Naming Conventions
+
+- **Features**: `feature/description` (e.g., `feature/anthropic-support`)
+- **Bug fixes**: `fix/description` (e.g., `fix/clipboard-windows`)
+- **Documentation**: `docs/description` (e.g., `docs/api-reference`)
+- **Performance**: `perf/description` (e.g., `perf/memory-optimization`)
+
+### 2. Make Changes
+
+#### Code Organization
+
+**Go Code** (`src/`):
+```
+src/
+├── main.go              # Application entry point
+├── llmServer/           # LLM integration
+│   ├── agent.go         # Core agent logic
+│   ├── llmService.go    # API communication
+│   └── ...
+└── ui/                  # User interface
+    ├── model.go         # State management
+    ├── view.go          # Rendering
+    └── ...
+```
+
+**JavaScript Code** (`scripts/`, `bin/`):
+- Build scripts for cross-platform compilation
+- Node.js wrapper for platform detection
+
+#### Coding Standards
+
+**Go Code Style:**
+```go
+// Use descriptive variable names
+func (a *Agent) processUserMessage(input string) (*Response, error) {
+    // Handle errors explicitly
+    if input == "" {
+        return nil, errors.New("input cannot be empty")
+    }
+    
+    // Use proper formatting
+    response, err := a.llm.Generate(context.Background(), input)
+    if err != nil {
+        return nil, fmt.Errorf("failed to generate response: %w", err)
+    }
+    
+    return response, nil
+}
+```
+
+**JavaScript Style:**
+```javascript
+// Use modern JavaScript features
+const buildTargets = [
+    { os: "linux", arch: "amd64", output: "menace-go-linux" },
+    { os: "darwin", arch: "amd64", output: "menace-go-darwin" },
+];
+
+// Handle errors properly
+try {
+    const result = execSync(command, options);
+    console.log(`✅ Build successful: ${target.output}`);
+} catch (error) {
+    console.error(`❌ Build failed: ${error.message}`);
+    process.exit(1);
+}
+```
+
+### 3. Testing
+
+#### Run Existing Tests
+
+```bash
+# Go tests
+cd src
+go test ./...
+
+# Build tests
+npm run build
+```
+
+#### Add New Tests
+
+**Unit Tests (Go):**
+```go
+// agent_test.go
+func TestAgentMessageProcessing(t *testing.T) {
+    agent, err := NewAgent("test-key")
+    require.NoError(t, err)
+    
+    response, _, err := agent.SendMessage(context.Background(), "test message")
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response)
+}
+```
+
+**Integration Tests:**
+```go
+func TestEndToEndFlow(t *testing.T) {
+    // Test complete workflow
+    agent, err := NewAgent(os.Getenv("OPENAI_API_KEY"))
+    if err != nil || os.Getenv("OPENAI_API_KEY") == "" {
+        t.Skip("Skipping integration test: API key not available")
+    }
+    
+    response, _, err := agent.SendMessage(context.Background(), "Hello")
+    assert.NoError(t, err)
+    assert.NotEmpty(t, response)
+}
+```
+
+### 4. Documentation
+
+Update documentation for your changes:
+
+**Code Documentation:**
+```go
+// SendMessage processes user input and returns an LLM response.
+// It handles context management and command suggestion extraction.
+//
+// Parameters:
+//   - ctx: Request context for cancellation
+//   - input: User message to process
+//
+// Returns:
+//   - string: LLM response text
+//   - *CommandSuggestion: Extracted command (if any)
+//   - error: Processing error (if any)
+func (a *Agent) SendMessage(ctx context.Context, input string) (string, *CommandSuggestion, error) {
+    // Implementation...
+}
+```
+
+**User Documentation:**
+Update relevant files in `docs/` if your changes affect user experience.
+
+### 5. Commit Your Changes
+
+#### Commit Message Format
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/):
+
+```
+type(scope): description
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
+
+**Examples:**
+```bash
+git commit -m "feat(llm): add support for Anthropic Claude models"
+git commit -m "fix(ui): resolve text selection issues on Windows"
+git commit -m "docs: add API reference documentation"
+git commit -m "test: add unit tests for agent message processing"
+```
+
+#### Good Commit Practices
+
+```bash
+# Stage your changes
+git add .
+
+# Commit with descriptive message
+git commit -m "feat(ui): improve keyboard navigation in chat interface"
+
+# Push to your fork
+git push origin feature/your-feature-name
+```
+
+## Pull Request Process
+
+### 1. Prepare Your PR
+
+**Pre-submission Checklist:**
+- [ ] Code builds successfully on all platforms
+- [ ] All tests pass
+- [ ] Code follows project style guidelines
+- [ ] Documentation is updated
+- [ ] Commit messages follow convention
+- [ ] Branch is up to date with main
+
+**Update your branch:**
+```bash
+# Sync with upstream
+git checkout main
+git pull upstream main
+git checkout feature/your-feature-name
+git rebase main
+```
+
+### 2. Submit Pull Request
+
+**PR Title Format:**
+```
+type(scope): Brief description of changes
+```
+
+**PR Description Template:**
+```markdown
+## Description
+Brief description of what this PR does.
+
+## Type of Change
+- [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] New feature (non-breaking change which adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Documentation update
+
+## How Has This Been Tested?
+- [ ] Unit tests
+- [ ] Integration tests  
+- [ ] Manual testing
+- [ ] Cross-platform verification
+
+## Screenshots (if applicable)
+Include screenshots or GIFs for UI changes.
+
+## Checklist
+- [ ] My code follows the style guidelines of this project
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I have made corresponding changes to the documentation
+- [ ] My changes generate no new warnings
+- [ ] I have added tests that prove my fix is effective or that my feature works
+- [ ] New and existing unit tests pass locally with my changes
+```
+
+### 3. Code Review Process
+
+**What to Expect:**
+- Maintainers will review your PR within a few days
+- You may receive feedback requesting changes
+- Tests will run automatically via CI
+- Approval required from at least one maintainer
+
+**Responding to Feedback:**
+```bash
+# Make requested changes
+git add .
+git commit -m "address review feedback: improve error handling"
+git push origin feature/your-feature-name
+```
+
+## Code Review Guidelines
+
+### For Contributors
+
+**Before Requesting Review:**
+- Ensure your code is self-documenting
+- Add comments for complex logic
+- Check for proper error handling
+- Verify cross-platform compatibility
+
+### For Reviewers
+
+**Review Focus Areas:**
+- Code correctness and logic
+- Performance implications  
+- Security considerations
+- User experience impact
+- Documentation completeness
+
+**Review Etiquette:**
+- Be constructive and specific
+- Explain the reasoning behind suggestions
+- Acknowledge good practices
+- Ask questions for clarification
+
+## Specific Contribution Areas
+
+### Adding New LLM Providers
+
+1. **Create provider client** in `llmServer/`:
+```go
+// anthropic.go
+func NewAnthropicAgent(apiKey string) (*Agent, error) {
+    llm, err := anthropic.New(
+        anthropic.WithToken(apiKey),
+        anthropic.WithModel("claude-3-sonnet-20240229"),
+    )
+    if err != nil {
+        return nil, err
+    }
+    
+    return &Agent{
+        llm:      llm,
+        provider: "anthropic",
+        // ... other fields
+    }, nil
+}
+```
+
+2. **Update configuration** to support provider selection
+3. **Add documentation** for new provider setup
+4. **Test thoroughly** with different models
+
+### UI Improvements
+
+1. **Follow Bubble Tea patterns**:
+```go
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+    switch msg := msg.(type) {
+    case tea.KeyMsg:
+        return m.handleKeyPress(msg)
+    case tea.WindowSizeMsg:
+        return m.handleResize(msg)
+    }
+    return m, nil
+}
+```
+
+2. **Consider accessibility** and cross-platform behavior
+3. **Test on different terminal sizes** and environments
+
+### Documentation Contributions
+
+1. **Use clear, actionable language**
+2. **Include code examples**
+3. **Test all commands and procedures**
+4. **Update table of contents** when adding new sections
+
+## Getting Help
+
+### Community Channels
+
+- **GitHub Issues** - Bug reports and feature requests
+- **GitHub Discussions** - General questions and ideas  
+- **Pull Requests** - Code review and collaboration
+
+### Development Questions
+
+**Before asking:**
+- Check existing documentation
+- Search previous issues and discussions
+- Try reproducing on different environments
+
+**When asking:**
+- Provide specific error messages
+- Include environment details (OS, Go version, etc.)
+- Share minimal reproduction steps
+
+## Release Process
+
+### Versioning
+
+We follow [Semantic Versioning](https://semver.org/):
+- **MAJOR** (X.0.0) - Breaking changes
+- **MINOR** (1.X.0) - New features, backward compatible
+- **PATCH** (1.1.X) - Bug fixes, backward compatible
+
+### Release Timeline
+
+- **Patch releases** - As needed for critical bugs
+- **Minor releases** - Monthly or when significant features are ready
+- **Major releases** - When breaking changes are necessary
+
+## Recognition
+
+Contributors are recognized in several ways:
+
+- **GitHub contributors graph** - Automatic recognition
+- **Release notes** - Major contributors mentioned
+- **Documentation** - Contributors section in README
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inclusive environment for all contributors. Please:
+
+- **Be respectful** in all interactions
+- **Be patient** with newcomers
+- **Be constructive** in feedback
+- **Be collaborative** in problem-solving
+
+## Questions?
+
+Don't hesitate to ask questions! The maintainers are here to help:
+
+- Open an issue for bugs or feature requests
+- Start a discussion for general questions
+- Comment on pull requests for code-specific questions
+
+Thank you for contributing to Menace CLI! 🚀
