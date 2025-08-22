@@ -1,0 +1,521 @@
+# Troubleshooting
+
+Common issues, solutions, and debugging techniques for Menace CLI.
+
+## Installation Issues
+
+### Command Not Found After Installation
+
+**Symptoms:**
+```bash
+menace: command not found
+```
+
+**Causes and Solutions:**
+
+1. **npm link failed or PATH issue**
+   ```bash
+   # Check if npm global bin is in PATH
+   npm config get prefix
+   echo $PATH
+   
+   # Add npm global bin to PATH
+   export PATH="$(npm config get prefix)/bin:$PATH"
+   
+   # Make it permanent (Linux/macOS)
+   echo 'export PATH="$(npm config get prefix)/bin:$PATH"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+
+2. **Incorrect installation directory**
+   ```bash
+   # Ensure you're in the correct directory
+   cd menace-cli/menace-cli  # Not just menace-cli/
+   npm link
+   ```
+
+3. **Permission issues (Linux/macOS)**
+   ```bash
+   # Check npm permissions
+   npm config get cache
+   sudo chown -R $(whoami) $(npm config get cache)
+   
+   # Or use a version manager like nvm (recommended)
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+   nvm install node
+   ```
+
+### Build Failures
+
+**Symptoms:**
+```bash
+npm run build
+> menace-cli@1.0.0 build
+> node scripts/build-all.js
+
+❌ build failed for linux/amd64
+```
+
+**Common Causes:**
+
+1. **Go not installed or wrong version**
+   ```bash
+   # Check Go installation
+   go version
+   # Should show Go 1.18 or higher
+   
+   # Install Go if missing
+   # Linux: sudo apt install golang-go
+   # macOS: brew install go
+   # Windows: Download from https://golang.org
+   ```
+
+2. **Missing dependencies**
+   ```bash
+   cd src
+   go mod download
+   go mod tidy
+   ```
+
+3. **CGO issues during cross-compilation**
+   ```bash
+   # Disable CGO for cross-compilation
+   cd src
+   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ../bin/menace-go-linux .
+   ```
+
+## Runtime Issues
+
+### API Key Problems
+
+**Symptoms:**
+```bash
+Error: OPENAI_API_KEY environment variable not set
+```
+
+**Solutions:**
+
+1. **Set the environment variable**
+   ```bash
+   # Linux/macOS
+   export OPENAI_API_KEY="sk-your-api-key-here"
+   
+   # Windows PowerShell
+   $env:OPENAI_API_KEY = "sk-your-api-key-here"
+   
+   # Windows Command Prompt
+   set OPENAI_API_KEY=sk-your-api-key-here
+   ```
+
+2. **Make it persistent**
+   ```bash
+   # Linux/macOS
+   echo 'export OPENAI_API_KEY="sk-your-key"' >> ~/.bashrc
+   source ~/.bashrc
+   
+   # Windows (permanent)
+   setx OPENAI_API_KEY "sk-your-key"
+   ```
+
+3. **Verify the key is set**
+   ```bash
+   # Linux/macOS
+   echo $OPENAI_API_KEY
+   
+   # Windows PowerShell
+   echo $env:OPENAI_API_KEY
+   
+   # Windows Command Prompt
+   echo %OPENAI_API_KEY%
+   ```
+
+**Invalid API Key:**
+```bash
+Error: API request failed with status: 401
+```
+
+**Solutions:**
+- Verify the API key is correct and hasn't been revoked
+- Check if the key has proper permissions
+- Test the key manually:
+  ```bash
+  curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+       "https://api.openai.com/v1/models"
+  ```
+
+### Network and Connection Issues
+
+**Symptoms:**
+```bash
+Error: Failed to connect to API
+Error: network timeout
+```
+
+**Causes and Solutions:**
+
+1. **Internet connectivity**
+   ```bash
+   # Test basic connectivity
+   ping 8.8.8.8
+   curl -I https://api.openai.com
+   ```
+
+2. **Firewall/proxy issues**
+   ```bash
+   # Set proxy if behind corporate firewall
+   export HTTPS_PROXY="http://proxy.company.com:8080"
+   export HTTP_PROXY="http://proxy.company.com:8080"
+   ```
+
+3. **DNS resolution issues**
+   ```bash
+   # Test DNS resolution
+   nslookup api.openai.com
+   
+   # Try different DNS servers
+   export DNS_SERVERS="8.8.8.8,1.1.1.1"
+   ```
+
+4. **SSL certificate issues**
+   ```bash
+   # Only for development - NOT recommended for production
+   export NODE_TLS_REJECT_UNAUTHORIZED="0"
+   ```
+
+### Performance Issues
+
+**Slow Response Times:**
+
+1. **Network latency**
+   ```bash
+   # Test API latency
+   curl -w "@curl-format.txt" -H "Authorization: Bearer $OPENAI_API_KEY" \
+        "https://api.openai.com/v1/models"
+   ```
+
+2. **Model selection**
+   - Switch to GPT-3.5 Turbo for faster responses
+   - Use F1 to open model selection in Menace CLI
+
+3. **Large conversation history**
+   ```bash
+   # Clear history if it gets too long
+   # Press Ctrl+C to exit and restart menace
+   ```
+
+**High Memory Usage:**
+- Monitor memory usage: `top -p $(pgrep menace)`
+- Restart the application periodically for long sessions
+- Consider reducing context window (future feature)
+
+## UI and Display Issues
+
+### Terminal Compatibility
+
+**Garbled or missing characters:**
+```bash
+# Ensure your terminal supports UTF-8
+echo $LANG
+export LANG=en_US.UTF-8
+
+# Use a proper monospace font
+# Recommended fonts: Fira Code, Source Code Pro, JetBrains Mono
+```
+
+**Colors not displaying correctly:**
+```bash
+# Check terminal color support
+echo $TERM
+tput colors
+
+# Set appropriate TERM variable
+export TERM=xterm-256color
+```
+
+**Mouse support issues:**
+- Ensure your terminal supports mouse reporting
+- Try different terminal emulators (iTerm2, Windows Terminal, etc.)
+- Check if terminal multiplexers (tmux, screen) interfere
+
+### Window Size Issues
+
+**Interface looks broken on small terminals:**
+- Minimum recommended terminal size: 80x24
+- Resize terminal window: `resize` command on some systems
+- Check current size: `stty size`
+
+**Text wrapping issues:**
+```bash
+# Get terminal dimensions
+tput cols
+tput lines
+
+# Force refresh
+clear
+```
+
+## Platform-Specific Issues
+
+### Windows Issues
+
+**PowerShell execution policy:**
+```powershell
+# Check current policy
+Get-ExecutionPolicy
+
+# Set policy to allow scripts
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+**Long path support:**
+```powershell
+# Enable long paths in Windows
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+                 -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+```
+
+**Windows Defender issues:**
+- Add exception for menace binary directory
+- Whitelist the Go build process
+
+### macOS Issues
+
+**Binary not executable:**
+```bash
+chmod +x bin/menace-go-darwin*
+```
+
+**Gatekeeper blocking execution:**
+```bash
+# Allow execution of unsigned binary
+xattr -dr com.apple.quarantine bin/menace-go-darwin*
+```
+
+**Apple Silicon compatibility:**
+- Ensure you're using the ARM64 binary: `menace-go-darwin-arm64`
+- Check architecture: `uname -m` should show `arm64`
+
+### Linux Issues
+
+**Missing libraries:**
+```bash
+# Check for missing dependencies
+ldd bin/menace-go-linux
+
+# Install common dependencies
+# Ubuntu/Debian:
+sudo apt-get update
+sudo apt-get install libc6-dev
+
+# CentOS/RHEL:
+sudo yum install glibc-devel
+```
+
+**Permission denied:**
+```bash
+chmod +x bin/menace-go-linux
+```
+
+## Debugging Techniques
+
+### Enable Debug Mode
+
+**Environment variable:**
+```bash
+export MENACE_DEBUG="true"
+menace
+```
+
+**Verbose Go output:**
+```bash
+cd src
+go run -v .
+```
+
+### Logging
+
+**Redirect output to file:**
+```bash
+menace 2>&1 | tee menace-debug.log
+```
+
+**Bubble Tea debug logging:**
+Uncomment in `main.go`:
+```go
+p := tea.NewProgram(
+    ui.NewModel(agent),
+    tea.WithAltScreen(),
+    tea.WithMouseAllMotion(),
+    tea.WithLogToFile("debug.log", "debug"), // Uncomment this line
+)
+```
+
+### Memory Profiling
+
+**Go memory profiling:**
+```bash
+cd src
+go build -o ../bin/menace-go-debug .
+GODEBUG=gctrace=1 ../bin/menace-go-debug
+```
+
+### Network Debugging
+
+**HTTP request tracing:**
+```bash
+export GODEBUG=http2debug=1
+menace
+```
+
+**tcpdump/Wireshark for network analysis:**
+```bash
+sudo tcpdump -i any host api.openai.com
+```
+
+## Error Messages Reference
+
+### Common Error Patterns
+
+**"context deadline exceeded"**
+- Network timeout
+- Increase timeout: `export MENACE_TIMEOUT="60"`
+- Check network connectivity
+
+**"connection refused"**
+- API service unavailable
+- Firewall blocking connection
+- Wrong API endpoint
+
+**"invalid character" in JSON parsing**
+- Malformed API response
+- Network interference
+- API service issues
+
+**"resource temporarily unavailable"**
+- Rate limiting
+- Wait and retry
+- Check API usage limits
+
+## Performance Monitoring
+
+### System Resource Usage
+
+**Monitor CPU and memory:**
+```bash
+# Linux/macOS
+top -p $(pgrep menace-go)
+htop -p $(pgrep menace-go)
+
+# Windows
+tasklist /fi "imagename eq menace-go-win.exe"
+```
+
+**Network usage:**
+```bash
+# Linux
+iftop -i eth0 -f "host api.openai.com"
+
+# macOS
+nettop -P -L 1 -j menace-go
+```
+
+### API Usage Tracking
+
+**Monitor API calls:**
+```bash
+# Count API requests
+grep "POST /v1/chat/completions" access.log | wc -l
+
+# Monitor token usage
+curl -H "Authorization: Bearer $OPENAI_API_KEY" \
+     "https://api.openai.com/v1/usage"
+```
+
+## Recovery Procedures
+
+### Reset Configuration
+
+**Clear all settings:**
+```bash
+# Remove environment variables
+unset OPENAI_API_KEY MENACE_DEBUG MENACE_TIMEOUT
+
+# Clear shell history (if needed)
+history -c
+
+# Restart with clean environment
+env -i bash
+export OPENAI_API_KEY="your-key"
+menace
+```
+
+### Reinstall from Scratch
+
+**Complete clean installation:**
+```bash
+# Remove existing installation
+npm unlink menace-cli 2>/dev/null || true
+rm -rf node_modules bin
+
+# Fresh install
+git pull origin main
+cd menace-cli
+npm install
+npm run build
+npm link
+```
+
+### Binary Corruption Issues
+
+**Rebuild binaries:**
+```bash
+# Clean build
+rm -rf bin/*
+npm run build
+
+# Verify binaries
+file bin/menace-go-*
+```
+
+## Getting Additional Help
+
+### Before Seeking Help
+
+1. **Check this troubleshooting guide**
+2. **Search existing GitHub issues**
+3. **Try the debug mode**
+4. **Test with minimal configuration**
+
+### Reporting Issues
+
+**Include in your bug report:**
+- Operating system and version
+- Node.js and Go versions
+- Full error messages
+- Steps to reproduce
+- Environment variables (without sensitive data)
+
+**Useful diagnostic commands:**
+```bash
+# System information
+uname -a                    # System info
+node --version             # Node.js version
+go version                 # Go version
+npm --version              # npm version
+echo $SHELL                # Shell type
+echo $TERM                 # Terminal type
+
+# Environment
+env | grep -E "(OPENAI|MENACE|PATH)" | head -10
+
+# Network
+curl -I https://api.openai.com
+```
+
+### Community Resources
+
+- **GitHub Issues** - Bug reports and feature requests
+- **GitHub Discussions** - General questions and community help
+- **Documentation** - Comprehensive guides and API reference
+
+Remember: Most issues have simple solutions. Don't hesitate to ask for help if you're stuck! 🤝

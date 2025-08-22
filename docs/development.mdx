@@ -1,0 +1,575 @@
+# Development Guide
+
+This guide covers setting up a development environment, understanding the codebase, and contributing to Menace CLI.
+
+## Development Environment Setup
+
+### Prerequisites
+
+**Required Tools:**
+- **Go**: Version 1.18 or higher
+- **Node.js**: Version 14 or higher
+- **npm**: Version 6 or higher
+- **Git**: For version control
+
+**Optional but Recommended:**
+- **Go extension for VS Code** or your preferred Go IDE
+- **gopls**: Go Language Server
+- **golangci-lint**: Linting tool
+
+### Initial Setup
+
+1. **Fork and Clone:**
+   ```bash
+   git clone https://github.com/your-username/menace-cli.git
+   cd menace-cli
+   ```
+
+2. **Install Dependencies:**
+   ```bash
+   cd menace-cli
+   npm install
+   ```
+
+3. **Install Go Dependencies:**
+   ```bash
+   cd src
+   go mod download
+   go mod tidy
+   ```
+
+4. **Set Up API Key:**
+   ```bash
+   export OPENAI_API_KEY="your-development-api-key"
+   ```
+
+5. **Build and Test:**
+   ```bash
+   npm run build
+   npm link  # For local testing
+   ```
+
+## Project Structure Deep Dive
+
+### Directory Layout
+
+```
+menace-cli/
+├── docs/                     # Documentation (MDX files)
+├── bin/                      # Compiled binaries
+│   ├── menace.js            # Node.js wrapper script
+│   ├── menace-go-linux      # Linux binary
+│   ├── menace-go-darwin*    # macOS binaries
+│   └── menace-go-win.exe    # Windows binary
+├── scripts/                  # Build automation
+│   ├── build-all.js         # Cross-platform build script
+│   ├── build-mac.js         # macOS-specific build
+│   └── build-windows.js     # Windows-specific build
+├── src/                      # Go source code
+│   ├── go.mod               # Go module definition
+│   ├── go.sum               # Go dependency checksums
+│   ├── main.go              # Application entry point
+│   ├── llmServer/           # LLM integration layer
+│   │   ├── agent.go         # Main agent orchestration
+│   │   ├── llmService.go    # LLM API communication
+│   │   ├── llmFactory.go    # Provider abstraction
+│   │   ├── github_interface.go  # GitHub integration
+│   │   ├── command_suggestion.go # Command parsing
+│   │   └── system_prompt.go # System prompts
+│   └── ui/                  # User interface components
+│       ├── model.go         # Core UI state management
+│       ├── view.go          # Rendering and layout
+│       ├── message.go       # Message system
+│       ├── update.go        # Event handling
+│       ├── executor.go      # Command execution
+│       ├── model_selection.go # Model switching UI
+│       ├── thinking.go      # Loading animations
+│       └── ui_utils.go      # UI utility functions
+├── package.json             # NPM package metadata
+└── README.md               # Project README
+```
+
+### Code Architecture
+
+#### 1. Entry Point (`main.go`)
+
+The application bootstrap process:
+
+```go
+func main() {
+    // Environment validation
+    apiKey := os.Getenv("OPENAI_API_KEY")
+    if apiKey == "" {
+        fmt.Println("Error: OPENAI_API_KEY environment variable not set")
+        os.Exit(1)
+    }
+
+    // Agent initialization
+    agent, err := llmServer.NewAgent(apiKey)
+    if err != nil {
+        fmt.Printf("Error initializing agent: %v\n", err)
+        os.Exit(1)
+    }
+
+    // UI initialization with Bubble Tea
+    zone.NewGlobal()
+    p := tea.NewProgram(
+        ui.NewModel(agent),
+        tea.WithAltScreen(),
+        tea.WithMouseAllMotion(),
+    )
+
+    if _, err := p.Run(); err != nil {
+        fmt.Println("Error running Menace CLI:", err)
+        os.Exit(1)
+    }
+}
+```
+
+#### 2. LLM Server Layer (`llmServer/`)
+
+**Agent (`agent.go`):**
+- Primary interface between UI and LLM providers
+- Manages conversation context and history
+- Handles function calling and command suggestions
+
+```go
+type Agent struct {
+    llm      llms.Model           // LangChain LLM interface
+    mu       sync.Mutex          // Thread safety
+    shell    string              // Detected shell environment
+    messages []llms.MessageContent // Conversation history
+    ctx      context.Context     // Request context
+    provider string              // Current LLM provider
+    Model    string              // Current model name
+}
+```
+
+**LLM Service (`llmService.go`):**
+- Singleton pattern for API management
+- HTTP client configuration and request handling
+- Model switching and configuration
+
+#### 3. UI Layer (`ui/`)
+
+**Model (`model.go`):**
+- Central state management following Bubble Tea patterns
+- Input handling, cursor management, and text selection
+- Integration with clipboard operations
+
+```go
+type Model struct {
+    Input    string              // Current input text
+    Messages []Message           // Chat history
+    agent    *llmServer.Agent    // LLM agent reference
+    Width    int                 // Terminal width
+    Height   int                 // Terminal height
+    Scroll   int                 // Chat scroll position
+    
+    // Cursor and selection state
+    CursorX     int
+    CursorY     int
+    WindowStart int
+    
+    // UI state
+    IsThinking   bool
+    IsConfigOpen bool
+    
+    // Command approval workflow
+    PendingCommand          *CommandSuggestionMsg
+    AwaitingCommandApproval bool
+}
+```
+
+## Development Workflow
+
+### Building for Development
+
+**Quick Build (current platform only):**
+```bash
+cd src
+go build -o ../bin/menace-go-dev .
+```
+
+**Full Cross-Platform Build:**
+```bash
+npm run build
+```
+
+**Platform-Specific Builds:**
+```bash
+npm run build-mac      # macOS only
+npm run build-windows  # Windows only
+```
+
+### Running in Development Mode
+
+**Option 1: Direct Go execution**
+```bash
+cd src
+export OPENAI_API_KEY="your-key"
+go run .
+```
+
+**Option 2: Using the wrapper**
+```bash
+# After building
+export OPENAI_API_KEY="your-key"
+node bin/menace.js
+```
+
+**Option 3: Using npm link**
+```bash
+npm link
+export OPENAI_API_KEY="your-key"
+menace
+```
+
+### Code Style and Standards
+
+#### Go Code Guidelines
+
+**Formatting:**
+```bash
+# Format code
+go fmt ./...
+
+# Lint code
+golangci-lint run
+```
+
+**Naming Conventions:**
+- Use camelCase for private functions and variables
+- Use PascalCase for exported functions and types
+- Use descriptive names for complex logic
+
+**Error Handling:**
+```go
+// Good: Explicit error handling
+result, err := someOperation()
+if err != nil {
+    return fmt.Errorf("operation failed: %w", err)
+}
+
+// Avoid: Ignoring errors
+result, _ := someOperation() // Bad
+```
+
+**Concurrency:**
+```go
+// Always protect shared state
+func (s *LLMService) SendMessage(input string) error {
+    s.mu.Lock()
+    defer s.mu.Unlock()
+    // ... safe operations
+}
+```
+
+#### JavaScript/Node.js Guidelines
+
+**File Structure:**
+- Use consistent indentation (2 spaces)
+- Include error handling for all async operations
+- Use modern JavaScript features (ES6+)
+
+### Testing
+
+#### Unit Tests
+
+**Running Tests:**
+```bash
+cd src
+go test ./...
+```
+
+**Writing Tests:**
+```go
+// Example test file: llmServer/agent_test.go
+func TestAgentInitialization(t *testing.T) {
+    agent, err := NewAgent("test-api-key")
+    assert.NoError(t, err)
+    assert.NotNil(t, agent)
+    assert.Equal(t, "openai", agent.provider)
+}
+```
+
+#### Integration Tests
+
+**Manual Testing Checklist:**
+- [ ] Application starts without errors
+- [ ] API key validation works
+- [ ] Model switching functions correctly
+- [ ] Chat interface responds to input
+- [ ] Command suggestions and execution work
+- [ ] Clipboard operations function
+- [ ] Cross-platform builds work
+
+### Debugging
+
+#### Go Application Debugging
+
+**Using Delve debugger:**
+```bash
+cd src
+dlv debug
+(dlv) break main.main
+(dlv) continue
+```
+
+**Logging and Debug Output:**
+```go
+import "log"
+
+// Add debug logging
+log.Printf("Debug: Processing message: %s", input)
+```
+
+#### UI Debugging
+
+**Bubble Tea Debug Mode:**
+```go
+// Enable debugging in main.go
+p := tea.NewProgram(
+    ui.NewModel(agent),
+    tea.WithAltScreen(),
+    tea.WithMouseAllMotion(),
+    // tea.WithLogToFile("debug.log", "debug"), // Uncomment for debug
+)
+```
+
+### Adding New Features
+
+#### 1. Adding a New LLM Provider
+
+1. **Create provider client** in `llmServer/`:
+```go
+// anthropic.go
+func NewAnthropicClient(apiKey string) (llms.Model, error) {
+    return anthropic.New(
+        anthropic.WithToken(apiKey),
+        anthropic.WithModel("claude-3-sonnet-20240229"),
+    )
+}
+```
+
+2. **Update agent initialization** in `agent.go`:
+```go
+func NewAgent(apiKey string, provider string) (*Agent, error) {
+    var llm llms.Model
+    var err error
+    
+    switch provider {
+    case "openai":
+        llm, err = openai.New(...)
+    case "anthropic":
+        llm, err = NewAnthropicClient(apiKey)
+    default:
+        return nil, fmt.Errorf("unsupported provider: %s", provider)
+    }
+    // ... rest of initialization
+}
+```
+
+3. **Add configuration support**:
+```go
+// Add environment variable support
+provider := os.Getenv("MENACE_PROVIDER")
+if provider == "" {
+    provider = "openai"
+}
+```
+
+#### 2. Adding UI Components
+
+1. **Create component in `ui/`**:
+```go
+// settings.go
+type SettingsModel struct {
+    cursor   int
+    options  []string
+    selected map[int]bool
+}
+
+func (m SettingsModel) Init() tea.Cmd {
+    return nil
+}
+
+func (m SettingsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+    // Handle input
+}
+
+func (m SettingsModel) View() string {
+    // Render component
+}
+```
+
+2. **Integrate with main model** in `model.go`:
+```go
+type Model struct {
+    // ... existing fields
+    SettingsOpen bool
+    Settings     SettingsModel
+}
+```
+
+3. **Update view rendering** in `view.go`:
+```go
+func (m Model) View() string {
+    if m.SettingsOpen {
+        return m.Settings.View()
+    }
+    // ... normal view
+}
+```
+
+#### 3. Adding Command Functions
+
+1. **Define function in `llmServer/`**:
+```go
+// functions.go
+type FileOperation struct {
+    Path    string `json:"path"`
+    Content string `json:"content"`
+}
+
+func ExecuteFileOperation(op FileOperation) error {
+    return ioutil.WriteFile(op.Path, []byte(op.Content), 0644)
+}
+```
+
+2. **Register with agent**:
+```go
+// In agent.go, add to function definitions
+functions := []llms.FunctionDefinition{
+    {
+        Name:        "file_operation",
+        Description: "Write content to a file",
+        Parameters: map[string]interface{}{
+            "type": "object",
+            "properties": map[string]interface{}{
+                "path":    map[string]string{"type": "string"},
+                "content": map[string]string{"type": "string"},
+            },
+            "required": []string{"path", "content"},
+        },
+    },
+}
+```
+
+### Performance Optimization
+
+#### 1. Memory Management
+
+**Context Window Management:**
+```go
+// Implement context trimming
+func (a *Agent) trimContext(maxTokens int) {
+    // Calculate token count
+    // Remove oldest messages if over limit
+}
+```
+
+**Efficient String Operations:**
+```go
+// Use strings.Builder for concatenation
+var builder strings.Builder
+for _, msg := range messages {
+    builder.WriteString(msg.Content)
+}
+result := builder.String()
+```
+
+#### 2. Rendering Optimization
+
+**Efficient Text Wrapping:**
+```go
+// Cache wrapped text to avoid recomputation
+type WrappedMessage struct {
+    Original string
+    Wrapped  string
+    Width    int
+}
+```
+
+**Reduce Redraws:**
+```go
+// Only update when state actually changes
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+    switch msg := msg.(type) {
+    case tea.KeyMsg:
+        if msg.String() == m.lastKey {
+            return m, nil // No change
+        }
+        m.lastKey = msg.String()
+    }
+    // ... handle update
+}
+```
+
+### Build System Customization
+
+#### Adding New Target Platforms
+
+Edit `scripts/build-all.js`:
+```javascript
+const buildTargets = [
+    // ... existing targets
+    { os: "freebsd", arch: "amd64", output: "menace-go-freebsd" },
+    { os: "linux", arch: "arm64", output: "menace-go-linux-arm64" },
+];
+```
+
+#### Custom Build Flags
+
+```javascript
+// In build scripts, add custom flags
+execSync(
+    `go build -ldflags="-X main.version=${version}" -o "${outPath}" .`,
+    { /* ... */ }
+);
+```
+
+### Contributing Guidelines
+
+#### 1. Code Review Process
+
+**Before Submitting:**
+- [ ] Run `go fmt ./...`
+- [ ] Run `golangci-lint run`  
+- [ ] Run `go test ./...`
+- [ ] Test cross-platform builds
+- [ ] Update documentation if needed
+
+**Pull Request Template:**
+```markdown
+## Description
+Brief description of changes
+
+## Type of Change
+- [ ] Bug fix
+- [ ] New feature
+- [ ] Breaking change
+- [ ] Documentation update
+
+## Testing
+- [ ] Unit tests pass
+- [ ] Manual testing completed
+- [ ] Cross-platform verification
+
+## Screenshots (if applicable)
+```
+
+#### 2. Issue Templates
+
+**Bug Report:**
+- Environment details (OS, Go version, etc.)
+- Steps to reproduce
+- Expected vs actual behavior
+- Error messages or logs
+
+**Feature Request:**
+- Use case description
+- Proposed solution
+- Alternative approaches considered
+
+This development guide provides the foundation for contributing to Menace CLI. The modular architecture makes it easy to extend functionality while maintaining code quality and performance.

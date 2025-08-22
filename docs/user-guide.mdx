@@ -1,0 +1,429 @@
+# User Guide
+
+This comprehensive guide covers how to effectively use Menace CLI for terminal assistance, code help, and productivity enhancement.
+
+## Interface Overview
+
+When you launch Menace CLI with the `menace` command, you'll see a terminal user interface (TUI) with several components:
+
+```
+┌─────────────────────────────────────────┐
+│                Chat Area                │
+│  ┌─────────────────────────────────────┐ │
+│  │ > How can I list files recursively? │ │
+│  │                                     │ │
+│  │ 🤖 You can use the `find` command...│ │
+│  │                                     │ │
+│  └─────────────────────────────────────┘ │
+├─────────────────────────────────────────┤
+│ Input Area                              │
+│ > Type your message here...             │
+└─────────────────────────────────────────┘
+```
+
+### Interface Components
+
+- **Chat Area**: Displays conversation history and AI responses
+- **Input Area**: Where you type messages and questions  
+- **Status Bar**: Shows current model and connection status
+- **Model Indicator**: Displays the active AI model
+
+## Basic Usage
+
+### Sending Messages
+
+1. **Type your message** in the input area at the bottom
+2. **Press Enter** to send the message to the AI
+3. **Wait for response** - you'll see a thinking animation
+4. **View the response** in the chat area above
+
+### Example Interactions
+
+#### Getting Command Help
+```
+You: How do I find all .js files in a directory?
+
+Menace: You can find all .js files in a directory using the `find` command:
+
+```bash
+find . -name "*.js" -type f
+```
+
+This will:
+- Search in the current directory (`.`) and subdirectories
+- Look for files (`-type f`) matching the pattern `*.js`
+- Display the full path of each matching file
+
+Alternative using `fd` (if installed):
+```bash
+fd -e js
+```
+```
+
+#### Code Assistance
+```
+You: Show me how to read a JSON file in Go
+
+Menace: Here's how to read and parse a JSON file in Go:
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+    "io"
+    "os"
+)
+
+type Person struct {
+    Name string `json:"name"`
+    Age  int    `json:"age"`
+}
+
+func main() {
+    file, err := os.Open("data.json")
+    if err != nil {
+        fmt.Printf("Error opening file: %v\n", err)
+        return
+    }
+    defer file.Close()
+
+    data, err := io.ReadAll(file)
+    if err != nil {
+        fmt.Printf("Error reading file: %v\n", err)
+        return
+    }
+
+    var person Person
+    err = json.Unmarshal(data, &person)
+    if err != nil {
+        fmt.Printf("Error parsing JSON: %v\n", err)
+        return
+    }
+
+    fmt.Printf("Name: %s, Age: %d\n", person.Name, person.Age)
+}
+```
+```
+
+## Advanced Features
+
+### Multi-line Input
+
+Menace CLI supports multi-line input for complex queries or code:
+
+1. **Type your message** normally
+2. **Press Shift+Enter** for new lines
+3. **Press Enter** when done to send
+
+Example:
+```
+You: Can you help me debug this Go function?
+
+func processUsers(users []User) []User {
+    var result []User
+    for i, user := range users {
+        if user.Active {
+            result = append(result, user)
+        }
+    }
+    return result
+}
+
+The function seems slow for large datasets.
+```
+
+### Text Selection and Clipboard
+
+#### Selection
+- **Mouse**: Click and drag to select text
+- **Keyboard**: Hold Shift + arrow keys
+- **Select All**: Ctrl+A (Cmd+A on macOS)
+
+#### Clipboard Operations
+- **Copy**: Ctrl+C (Cmd+C on macOS)
+- **Cut**: Ctrl+X (Cmd+X on macOS)  
+- **Paste**: Ctrl+V (Cmd+V on macOS)
+
+### Scrolling Through History
+
+Navigate through your conversation:
+- **Mouse**: Use scroll wheel in chat area
+- **Keyboard**: Use arrow keys to navigate input history
+
+### Command Suggestions and Execution
+
+When Menace suggests shell commands, you'll see an approval dialog:
+
+```
+Menace suggests running: ls -la
+
+[Y] Yes, execute  [N] No  [E] Edit first
+```
+
+**Options:**
+- **Y**: Execute the command immediately
+- **N**: Decline and continue conversation
+- **E**: Edit the command before executing
+
+## Model Selection
+
+Press **F1** or use the configuration interface to switch between available models:
+
+### Available Models
+
+1. **GPT-4 Mini** (Default)
+   - Balanced performance and cost
+   - Good for most use cases
+   - Fast response times
+
+2. **GPT-4**
+   - Highest quality responses
+   - Best for complex problems
+   - Slower and more expensive
+
+3. **GPT-3.5 Turbo**
+   - Fastest responses
+   - Most cost-effective
+   - Good for simple queries
+
+### Switching Models
+
+1. Press **F1** to open model selection
+2. Use **arrow keys** to highlight desired model
+3. Press **Enter** to select
+4. Press **Esc** to cancel
+
+## Keyboard Shortcuts
+
+### Input Navigation
+| Shortcut | Action |
+|----------|---------|
+| **Arrow Keys** | Move cursor |
+| **Ctrl+A** / **Cmd+A** | Select all text |
+| **Ctrl+C** / **Cmd+C** | Copy selected text |
+| **Ctrl+V** / **Cmd+V** | Paste from clipboard |
+| **Ctrl+X** / **Cmd+X** | Cut selected text |
+| **Home** | Move to beginning of line |
+| **End** | Move to end of line |
+| **Backspace** | Delete character before cursor |
+| **Delete** | Delete character after cursor |
+
+### Application Controls
+| Shortcut | Action |
+|----------|---------|
+| **F1** | Open model selection |
+| **Esc** | Close dialogs / Clear input |
+| **Ctrl+C** | Exit application (when no text selected) |
+
+### Chat Navigation  
+| Shortcut | Action |
+|----------|---------|
+| **Scroll Wheel** | Scroll through chat history |
+| **Page Up/Down** | Navigate chat pages |
+
+## Best Practices
+
+### Writing Effective Prompts
+
+1. **Be Specific**: Provide context and specific requirements
+   ```
+   Good: "How do I parse a CSV file in Python with error handling?"
+   Better: "Show me how to parse a CSV file in Python with pandas, handling missing values and file not found errors"
+   ```
+
+2. **Include Context**: Mention your environment or constraints
+   ```
+   "I'm working in a Docker container with Python 3.9. How can I install packages without root access?"
+   ```
+
+3. **Ask Follow-up Questions**: Build on previous responses
+   ```
+   "Can you modify that code to handle UTF-8 encoding issues?"
+   ```
+
+### Code Assistance Tips
+
+1. **Share Your Code**: Include relevant code snippets for better help
+2. **Mention the Language**: Specify programming language and version
+3. **Describe the Problem**: Explain what isn't working
+4. **Include Error Messages**: Copy relevant error messages
+
+### Command Help Tips
+
+1. **Specify Your OS**: Different systems have different commands
+2. **Mention Your Shell**: bash, zsh, PowerShell, etc.
+3. **Ask for Alternatives**: Request multiple approaches when available
+
+## Common Use Cases
+
+### 1. Learning New Commands
+
+```
+You: I'm new to Linux. How do I find files modified in the last 7 days?
+
+Menace: Use the `find` command with the `-mtime` option:
+
+```bash
+find . -mtime -7 -type f
+```
+
+This finds all files (`-type f`) in the current directory and subdirectories that were modified within the last 7 days (`-mtime -7`).
+
+For more readable output with details:
+```bash
+find . -mtime -7 -type f -ls
+```
+```
+
+### 2. Code Review and Debugging
+
+```
+You: This Python function is giving me unexpected results:
+
+def calculate_average(numbers):
+    total = 0
+    for num in numbers:
+        total += num
+    return total / len(numbers)
+
+Menace: The function looks mostly correct, but it has a potential division by zero error. Here's an improved version:
+
+```python
+def calculate_average(numbers):
+    if not numbers:  # Handle empty list
+        return 0  # or raise ValueError("Cannot calculate average of empty list")
+    
+    total = sum(numbers)  # More pythonic than manual loop
+    return total / len(numbers)
+```
+
+The main issues were:
+1. No handling for empty lists (would cause ZeroDivisionError)
+2. The manual loop can be replaced with built-in `sum()` function
+```
+
+### 3. System Administration
+
+```
+You: How do I check which process is using port 8080?
+
+Menace: You can check which process is using port 8080 using several methods:
+
+**On Linux/macOS:**
+```bash
+# Using lsof
+lsof -i :8080
+
+# Using netstat
+netstat -tulpn | grep :8080
+
+# Using ss (modern replacement for netstat)
+ss -tulpn | grep :8080
+```
+
+**On Windows:**
+```cmd
+# Using netstat
+netstat -ano | findstr :8080
+
+# Using PowerShell
+Get-NetTCPConnection -LocalPort 8080
+```
+
+The output will show the PID (process ID) of the process using the port.
+```
+
+### 4. Git and Version Control
+
+```
+You: I accidentally committed sensitive data. How do I remove it from Git history?
+
+Menace: To remove sensitive data from Git history, you have several options depending on the situation:
+
+**If you just made the commit (haven't pushed yet):**
+```bash
+# Reset to previous commit
+git reset --soft HEAD~1
+# Edit files to remove sensitive data
+# Recommit
+git add .
+git commit -m "Fixed commit without sensitive data"
+```
+
+**If you've already pushed (more complex):**
+```bash
+# Use git filter-branch to rewrite history
+git filter-branch --force --index-filter \
+    'git rm --cached --ignore-unmatch path/to/sensitive/file' \
+    --prune-empty --tag-name-filter cat -- --all
+
+# Force push (CAUTION: affects other users)
+git push --force --all
+```
+
+**Important warnings:**
+- Rewriting pushed history affects all collaborators
+- Consider rotating any exposed secrets immediately
+- For large repositories, consider using git-filter-repo instead
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. No Response from AI
+- **Check API Key**: Verify your OpenAI API key is set correctly
+- **Check Internet**: Ensure you have internet connectivity
+- **Check API Limits**: Verify you haven't exceeded API rate limits
+
+#### 2. Slow Responses
+- **Try Different Model**: Switch to GPT-3.5 Turbo for faster responses
+- **Check Network**: Slow internet can cause delays
+- **Reduce Context**: Long conversations slow down processing
+
+#### 3. Interface Issues
+- **Terminal Size**: Ensure your terminal is large enough
+- **Color Support**: Some terminals may have color display issues
+- **Font Issues**: Use a monospace font for best results
+
+### Error Messages
+
+#### "API key not set"
+```bash
+export OPENAI_API_KEY="your-key-here"
+```
+
+#### "Connection failed"
+- Check internet connection
+- Verify firewall settings
+- Try again after a moment
+
+#### "Rate limit exceeded"
+- Wait before making more requests
+- Consider upgrading your OpenAI plan
+
+## Tips for Productivity
+
+### 1. Use Menace for Learning
+- Ask for explanations of unfamiliar commands
+- Request code examples in new languages
+- Get help understanding error messages
+
+### 2. Iterative Problem Solving
+- Start with high-level questions
+- Ask follow-up questions to dive deeper
+- Build upon previous responses
+
+### 3. Context Building
+- Reference previous parts of your conversation
+- Provide relevant background information
+- Keep related queries in the same session
+
+### 4. Efficient Command Discovery
+- Ask for alternatives to commands you know
+- Request one-liners for complex tasks
+- Learn about powerful flags and options
+
+Menace CLI is designed to be your intelligent terminal companion. The more you use it, the more productive you'll become at command-line tasks, coding, and system administration.

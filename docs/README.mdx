@@ -1,0 +1,66 @@
+# Menace CLI Documentation
+
+Welcome to the Menace CLI documentation. This comprehensive guide covers everything you need to know about building, deploying, and using Menace CLI - a cross-platform, terminal-based intelligent assistant.
+
+## Table of Contents
+
+- [Getting Started](./getting-started.mdx)
+- [Architecture Overview](./architecture.mdx) 
+- [Installation Guide](./installation.mdx)
+- [Configuration](./configuration.mdx)
+- [User Guide](./user-guide.mdx)
+- [Development Guide](./development.mdx)
+- [API Reference](./api-reference.mdx)
+- [Build System](./build-system.mdx)
+- [Contributing](./contributing.mdx)
+- [Troubleshooting](./troubleshooting.mdx)
+
+## What is Menace CLI?
+
+Menace CLI is a cross-platform, terminal-based intelligent assistant that leverages large language models (LLMs) to provide context-aware assistance directly in your terminal. Built with Go for performance and Node.js for cross-platform compatibility, it offers an interactive text user interface (TUI) powered by Bubble Tea.
+
+### Key Features
+
+- **Cross-Platform Support**: Native binaries for Windows, macOS (Intel & Apple Silicon), and Linux
+- **Interactive TUI**: Rich text user interface with mouse support and syntax highlighting
+- **LLM Integration**: Context-aware AI assistance using OpenAI and Anthropic models
+- **Command Suggestions**: Intelligent shell command recommendations
+- **Code Assistance**: Read, write, and navigate code with AI help
+- **Modern Architecture**: Built with Go's performance and Node.js ecosystem benefits
+
+### Quick Start
+
+```bash
+# Install from npm (coming soon)
+npm install -g menace-cli
+
+# Set your API key
+export OPENAI_API_KEY="your_api_key_here"
+
+# Launch Menace
+menace
+```
+
+For detailed installation instructions, see the [Installation Guide](./installation.mdx).
+
+## Project Structure
+
+```
+menace-cli/
+├── docs/                     # Comprehensive documentation
+├── bin/                      # Compiled Go binaries
+├── package.json             # NPM metadata and build scripts
+├── scripts/                 # Build and deployment scripts
+└── src/                     # Go source code
+    ├── main.go             # Application entry point
+    ├── llmServer/          # LLM integration and agent logic
+    └── ui/                 # Bubble Tea UI components
+```
+
+## Contributing
+
+Menace CLI is open-source and welcomes contributions. See our [Contributing Guide](./contributing.mdx) to get started.
+
+## License
+
+MIT License - see [LICENSE](../LICENSE) for details.

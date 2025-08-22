@@ -1,0 +1,403 @@
+# Installation Guide
+
+This comprehensive guide covers all installation methods for Menace CLI across different platforms and use cases.
+
+## Prerequisites
+
+### System Requirements
+
+**Operating Systems**:
+- Windows 10/11 (x64)
+- macOS 10.15+ (Intel and Apple Silicon)
+- Linux distributions (x64)
+
+**Runtime Dependencies**:
+- **Node.js**: Version 14.0.0 or higher
+- **npm**: Version 6.0.0 or higher (usually bundled with Node.js)
+
+**API Requirements**:
+- **OpenAI API Key**: Required for LLM functionality
+- **Internet Connection**: Required for API communication
+
+### Checking Prerequisites
+
+Verify your system meets the requirements:
+
+```bash
+# Check Node.js version
+node --version
+
+# Check npm version
+npm --version
+
+# Check your platform
+node -e "console.log(process.platform, process.arch)"
+```
+
+## Installation Methods
+
+### Method 1: npm Installation (Recommended - Coming Soon)
+
+Once published to npm, this will be the easiest installation method:
+
+```bash
+# Global installation
+npm install -g menace-cli
+
+# Verify installation
+menace --version
+```
+
+### Method 2: From Source (Current Method)
+
+#### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli
+```
+
+#### Step 2: Navigate to Package Directory
+
+```bash
+cd menace-cli
+```
+
+#### Step 3: Install Dependencies and Build
+
+```bash
+# Install Node.js dependencies
+npm install
+
+# Build all platform binaries
+npm run build
+```
+
+#### Step 4: Link for Global Usage
+
+```bash
+# Create global symlink
+npm link
+
+# Verify installation
+menace --version
+```
+
+### Method 3: Direct Binary Installation
+
+If you prefer to manage binaries directly:
+
+#### Download Binaries
+
+Build or download the appropriate binary for your platform:
+
+**Linux:**
+```bash
+npm run build
+# Binary will be at: bin/menace-go-linux
+```
+
+**macOS (Intel):**
+```bash
+npm run build
+# Binary will be at: bin/menace-go-darwin
+```
+
+**macOS (Apple Silicon):**
+```bash
+npm run build
+# Binary will be at: bin/menace-go-darwin-arm64
+```
+
+**Windows:**
+```bash
+npm run build
+# Binary will be at: bin/menace-go-win.exe
+```
+
+#### Manual Installation
+
+1. Copy the binary to a directory in your PATH
+2. Make it executable (Linux/macOS): `chmod +x menace-go-*`
+3. Create a wrapper script or alias
+
+## Platform-Specific Instructions
+
+### Windows Installation
+
+#### Using PowerShell (Recommended)
+
+```powershell
+# Clone repository
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli/menace-cli
+
+# Build and install
+npm install
+npm run build
+npm link
+
+# Set API key permanently
+setx OPENAI_API_KEY "your-api-key-here"
+```
+
+#### Using Command Prompt
+
+```cmd
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli\menace-cli
+npm install
+npm run build
+npm link
+set OPENAI_API_KEY=your-api-key-here
+```
+
+#### Windows-Specific Notes
+
+- Ensure you have Git for Windows installed
+- PowerShell execution policy may need adjustment:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+
+### macOS Installation
+
+#### Using Terminal
+
+```bash
+# Install prerequisites if needed
+# Install Node.js from https://nodejs.org or use Homebrew:
+brew install node
+
+# Clone and install
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli/menace-cli
+npm install
+npm run build
+npm link
+
+# Set API key
+echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+#### Apple Silicon Considerations
+
+The build system automatically detects Apple Silicon and builds the appropriate binary (`menace-go-darwin-arm64`).
+
+### Linux Installation
+
+#### Ubuntu/Debian
+
+```bash
+# Install Node.js (if not already installed)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Clone and install Menace CLI
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli/menace-cli
+npm install
+npm run build
+npm link
+
+# Set API key
+echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### RHEL/CentOS/Fedora
+
+```bash
+# Install Node.js (if not already installed)
+curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+sudo yum install -y nodejs  # or dnf on Fedora
+
+# Clone and install Menace CLI
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli/menace-cli
+npm install
+npm run build
+npm link
+
+# Set API key
+echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+#### Arch Linux
+
+```bash
+# Install Node.js
+sudo pacman -S nodejs npm
+
+# Clone and install
+git clone https://github.com/PramaYudhistira/menace-cli.git
+cd menace-cli/menace-cli
+npm install
+npm run build
+npm link
+
+# Set API key
+echo 'export OPENAI_API_KEY="your-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+## Configuration
+
+### API Key Setup
+
+Menace CLI requires an OpenAI API key. Get one from [OpenAI's website](https://platform.openai.com/api-keys).
+
+#### Environment Variable (Recommended)
+
+Set the API key as an environment variable:
+
+**Linux/macOS:**
+```bash
+export OPENAI_API_KEY="sk-your-actual-api-key-here"
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY = "sk-your-actual-api-key-here"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set OPENAI_API_KEY=sk-your-actual-api-key-here
+```
+
+#### Persistent Configuration
+
+To make the API key persistent across sessions:
+
+**Linux/macOS (bash):**
+```bash
+echo 'export OPENAI_API_KEY="sk-your-actual-api-key-here"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+**Linux/macOS (zsh):**
+```bash
+echo 'export OPENAI_API_KEY="sk-your-actual-api-key-here"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+**Windows:**
+```cmd
+setx OPENAI_API_KEY "sk-your-actual-api-key-here"
+```
+
+## Verification
+
+After installation, verify everything works:
+
+### Check Installation
+
+```bash
+# Check if command is available
+which menace  # Linux/macOS
+where menace  # Windows
+
+# Check version
+menace --version
+```
+
+### Test Basic Functionality
+
+```bash
+# Launch Menace CLI
+menace
+
+# You should see the TUI interface
+# Try typing a simple question like "hello"
+```
+
+### Verify API Integration
+
+If Menace CLI starts but can't connect to the API:
+
+1. **Check API Key**: Ensure it's properly set and valid
+2. **Check Internet**: Verify you have internet connectivity
+3. **Check Firewall**: Ensure outbound HTTPS is allowed
+
+## Troubleshooting Installation Issues
+
+### Common Issues
+
+#### "Command not found" after npm link
+
+**Solution**:
+```bash
+# Check npm global directory
+npm config get prefix
+
+# Add to PATH if necessary (Linux/macOS)
+export PATH="$(npm config get prefix)/bin:$PATH"
+
+# On Windows, npm usually handles this automatically
+```
+
+#### Permission errors on Linux/macOS
+
+**Solution**:
+```bash
+# Option 1: Use a Node version manager (recommended)
+# Install nvm and use it to install Node.js
+
+# Option 2: Change npm's default directory
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH=~/.npm-global/bin:$PATH
+```
+
+#### Build failures
+
+**Common causes and solutions**:
+- **Missing Go**: The build uses Go cross-compilation
+- **Network issues**: npm install may fail due to network
+- **Platform issues**: Ensure you're on a supported platform
+
+#### Windows-specific issues
+
+- **Execution Policy**: PowerShell may block script execution
+- **Long paths**: Enable long path support in Windows
+- **Antivirus**: Some antivirus software may quarantine the binary
+
+### Getting Help
+
+If you encounter issues:
+
+1. **Check the logs**: Look for error messages in the terminal
+2. **Verify prerequisites**: Ensure all requirements are met
+3. **Check GitHub issues**: See if others have reported similar problems
+4. **Create an issue**: Report new bugs with system details
+
+## Next Steps
+
+Once installed successfully:
+
+1. **Read the [Getting Started Guide](./getting-started.mdx)**
+2. **Explore the [User Guide](./user-guide.mdx)**
+3. **Configure advanced settings in [Configuration](./configuration.mdx)**
+
+## Updating
+
+To update Menace CLI:
+
+### From Source Installation
+
+```bash
+cd menace-cli/menace-cli
+git pull origin main
+npm run build
+```
+
+### Future npm Updates
+
+```bash
+npm update -g menace-cli
+```
+
+Stay updated with the latest features and bug fixes!

@@ -1,0 +1,158 @@
+# Getting Started with Menace CLI
+
+This guide will help you get up and running with Menace CLI in just a few minutes.
+
+## Prerequisites
+
+Before installing Menace CLI, ensure you have the following:
+
+- **Node.js**: Version 14 or higher
+- **npm**: Usually comes with Node.js
+- **Operating System**: Windows, macOS, or Linux
+- **LLM API Key**: OpenAI API key (Anthropic support coming soon)
+
+## Quick Installation
+
+### Option 1: From npm (Recommended - Coming Soon)
+
+```bash
+npm install -g menace-cli
+```
+
+### Option 2: From Source
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-org/menace-cli.git
+   cd menace-cli
+   ```
+
+2. **Install dependencies and build**:
+   ```bash
+   npm install
+   npm run build
+   ```
+
+3. **Link the CLI globally**:
+   ```bash
+   npm link
+   ```
+
+## Configuration
+
+### Setting Up Your API Key
+
+Menace CLI requires an OpenAI API key to function. Set it as an environment variable:
+
+**Linux/macOS:**
+```bash
+export OPENAI_API_KEY="sk-your-api-key-here"
+```
+
+**Windows (Command Prompt):**
+```cmd
+set OPENAI_API_KEY=sk-your-api-key-here
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:OPENAI_API_KEY = "sk-your-api-key-here"
+```
+
+**Permanent Configuration (recommended):**
+
+Add the environment variable to your shell profile:
+
+**Linux/macOS (bash/zsh):**
+```bash
+echo 'export OPENAI_API_KEY="sk-your-api-key-here"' >> ~/.bashrc
+# or for zsh
+echo 'export OPENAI_API_KEY="sk-your-api-key-here"' >> ~/.zshrc
+```
+
+**Windows:**
+```cmd
+setx OPENAI_API_KEY "sk-your-api-key-here"
+```
+
+## First Launch
+
+Once installed and configured, launch Menace CLI:
+
+```bash
+menace
+```
+
+You should see a terminal user interface (TUI) with:
+- A chat area displaying conversation history
+- An input area at the bottom for typing messages
+- Status indicators and model information
+
+## Basic Usage
+
+### Sending Messages
+
+1. Type your message or question in the input area
+2. Press `Enter` to send
+3. Menace will respond with helpful information or suggestions
+
+### Example Interactions
+
+**Getting help with shell commands:**
+```
+You: How do I list all files including hidden ones?
+Menace: You can use the `ls -la` command to list all files including hidden ones...
+```
+
+**Code assistance:**
+```
+You: How do I read a file in Go?
+Menace: Here's how to read a file in Go: [provides code example]
+```
+
+### Keyboard Shortcuts
+
+- **Enter**: Send message
+- **Ctrl+C**: Copy selected text
+- **Ctrl+V**: Paste from clipboard
+- **Ctrl+A**: Select all text
+- **Ctrl+X**: Cut selected text
+- **↑/↓**: Navigate input history
+- **Mouse Scroll**: Scroll through chat history
+- **Esc**: Clear current input or exit configuration
+
+## Model Configuration
+
+Menace CLI supports multiple AI models. Press `F1` or use the model selection interface to choose between:
+
+- **GPT-4 Mini**: Balanced performance and cost
+- **GPT-4**: Higher quality responses
+- **GPT-3.5 Turbo**: Faster, cost-effective option
+
+## Next Steps
+
+Now that you have Menace CLI running, explore these guides:
+
+- **[User Guide](./user-guide.mdx)**: Comprehensive usage instructions
+- **[Configuration](./configuration.mdx)**: Advanced configuration options
+- **[Architecture](./architecture.mdx)**: Understanding how Menace works
+- **[Development](./development.mdx)**: Contributing to the project
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. **Verify API Key**: Ensure your OpenAI API key is valid and properly set
+2. **Check Network**: Menace requires internet access to communicate with LLM APIs
+3. **Update**: Make sure you're using the latest version
+4. **Logs**: Check terminal output for error messages
+
+For more detailed troubleshooting, see the [Troubleshooting Guide](./troubleshooting.mdx).
+
+## Getting Help
+
+- **Documentation**: Browse these docs for comprehensive information
+- **Issues**: Report bugs or request features on GitHub
+- **Community**: Join discussions and get help from other users
+
+Welcome to Menace CLI! Happy coding! 🚀

@@ -1,0 +1,147 @@
+{
+  "name": "Menace CLI",
+  "version": "1.0.0",
+  "description": "Cross-platform, terminal-based intelligent assistant built with Go and Node.js",
+  "author": "Prama Yudhistira",
+  "license": "MIT",
+  "homepage": "https://github.com/PramaYudhistira/menace-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PramaYudhistira/menace-cli.git"
+  },
+  "keywords": [
+    "cli",
+    "terminal",
+    "ai",
+    "assistant",
+    "llm",
+    "openai",
+    "tui",
+    "go",
+    "nodejs",
+    "cross-platform"
+  ],
+  "languages": [
+    "go",
+    "javascript",
+    "shell"
+  ],
+  "framework": "bubbletea",
+  "documentation": {
+    "format": "mdx",
+    "location": "docs/",
+    "main": "docs/README.mdx",
+    "structure": [
+      {
+        "title": "Getting Started",
+        "path": "docs/getting-started.mdx",
+        "description": "Quick start guide and initial setup"
+      },
+      {
+        "title": "Architecture Overview", 
+        "path": "docs/architecture.mdx",
+        "description": "System design and component architecture"
+      },
+      {
+        "title": "Installation Guide",
+        "path": "docs/installation.mdx", 
+        "description": "Complete installation instructions for all platforms"
+      },
+      {
+        "title": "Configuration",
+        "path": "docs/configuration.mdx",
+        "description": "Environment variables and advanced configuration"
+      },
+      {
+        "title": "User Guide",
+        "path": "docs/user-guide.mdx",
+        "description": "Comprehensive usage instructions and best practices"
+      },
+      {
+        "title": "Development Guide",
+        "path": "docs/development.mdx",
+        "description": "Setting up development environment and contributing"
+      },
+      {
+        "title": "API Reference",
+        "path": "docs/api-reference.mdx",
+        "description": "Complete API documentation and interfaces"
+      },
+      {
+        "title": "Build System",
+        "path": "docs/build-system.mdx",
+        "description": "Cross-platform build system and packaging"
+      },
+      {
+        "title": "Contributing",
+        "path": "docs/contributing.mdx",
+        "description": "Guidelines for contributing to the project"
+      },
+      {
+        "title": "Troubleshooting",
+        "path": "docs/troubleshooting.mdx",
+        "description": "Common issues and debugging techniques"
+      }
+    ],
+    "features": [
+      "Cross-platform binaries for Windows, macOS, and Linux",
+      "Interactive TUI with mouse support and syntax highlighting", 
+      "Context-aware LLM integration with OpenAI and future Anthropic support",
+      "Intelligent shell command suggestions and execution",
+      "Code assistance for reading, writing, and navigating code",
+      "Modern architecture combining Go performance with Node.js ecosystem",
+      "Clipboard operations and text selection",
+      "Model switching between GPT-4, GPT-4 Mini, and GPT-3.5 Turbo",
+      "Real-time conversation history and context management",
+      "Cross-platform shell detection and adaptation"
+    ]
+  },
+  "project_structure": {
+    "type": "hybrid",
+    "primary_language": "go",
+    "build_system": "nodejs",
+    "directories": {
+      "docs/": "Comprehensive documentation in MDX format",
+      "bin/": "Compiled Go binaries and Node.js wrapper",
+      "scripts/": "Build automation and cross-platform compilation",
+      "src/": "Go source code including UI and LLM server components",
+      "menace-cli/": "NPM package structure and configuration"
+    }
+  },
+  "build_info": {
+    "build_system": "npm + go cross-compilation",
+    "target_platforms": [
+      "linux/amd64",
+      "darwin/amd64", 
+      "darwin/arm64",
+      "windows/amd64"
+    ],
+    "dependencies": {
+      "go": "1.18+",
+      "nodejs": "14+",
+      "npm": "6+"
+    }
+  },
+  "external_apis": [
+    {
+      "name": "OpenAI API",
+      "purpose": "LLM functionality and chat completions",
+      "required": true,
+      "authentication": "API key via environment variable"
+    }
+  ],
+  "cli_info": {
+    "binary_name": "menace",
+    "entry_point": "bin/menace.js",
+    "config_method": "environment_variables",
+    "primary_config": "OPENAI_API_KEY"
+  },
+  "quality_metrics": {
+    "documentation_coverage": "comprehensive",
+    "code_comments": "well-documented",
+    "test_coverage": "basic",
+    "cross_platform_support": "full"
+  },
+  "maintenance_status": "active",
+  "last_updated": "2025-01-27"
+}
